@@ -1,0 +1,25 @@
+{
+  "name": "Ethos AI Terminal",
+  "short_name": "EthosTerminal",
+  "description": "AI-powered retro CRT terminal for exploring Ethos Network Web3 reputation data",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#FFA500",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3Ctext x='50' y='55' font-family='monospace' font-size='30' fill='%23FFA500' text-anchor='middle'%3E$%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3Ctext x='50' y='55' font-family='monospace' font-size='30' fill='%23FFA500' text-anchor='middle'%3E$%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["productivity", "developer", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}

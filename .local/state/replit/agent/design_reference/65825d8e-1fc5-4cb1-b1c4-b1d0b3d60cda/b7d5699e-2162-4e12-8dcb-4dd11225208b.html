@@ -1,0 +1,689 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethos AI Terminal - Retro CRT Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'mono': ['IBM Plex Mono', 'Courier New', 'monospace'],
+                    },
+                    colors: {
+                        'amber-terminal': '#FFA500',
+                        'green-matrix': '#00FF41',
+                        'blue-ibm': '#00AAFF',
+                        'green-apple': '#41FF00',
+                        'dark-apple': '#001100',
+                    },
+                    animation: {
+                        'scanline': 'scanline 0.1s linear infinite',
+                        'cursor-blink': 'cursor-blink 1s infinite',
+                        'screen-flicker': 'screen-flicker 0.15s ease-in-out',
+                        'boot-text': 'boot-text 0.05s ease-out',
+                    },
+                    keyframes: {
+                        'scanline': {
+                            '0%': { transform: 'translateY(-100vh)' },
+                            '100%': { transform: 'translateY(100vh)' }
+                        },
+                        'cursor-blink': {
+                            '0%, 50%': { opacity: '1' },
+                            '51%, 100%': { opacity: '0' }
+                        },
+                        'screen-flicker': {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.98' }
+                        },
+                        'boot-text': {
+                            'from': { opacity: '0' },
+                            'to': { opacity: '1' }
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .crt-monitor {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border-radius: 25px;
+            box-shadow: 
+                inset 0 0 30px rgba(0,0,0,0.8),
+                0 0 50px rgba(0,0,0,0.9),
+                0 20px 40px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .crt-screen {
+            background: #000;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            transform: perspective(800px) rotateX(2deg);
+        }
+        
+        .terminal-content {
+            letter-spacing: 0.5px;
+            line-height: 1.4;
+        }
+        
+        .phosphor-glow {
+            text-shadow: 
+                0 0 5px currentColor,
+                0 0 10px currentColor,
+                0 0 15px currentColor;
+        }
+        
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(255,255,255,0.03) 2px,
+                rgba(255,255,255,0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .scanline-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            z-index: 15;
+            pointer-events: none;
+        }
+        
+        .screen-curve {
+            border-radius: 15px;
+            transform: perspective(1000px) rotateX(1deg) rotateY(-1deg);
+        }
+        
+        .retro-button {
+            background: #333;
+            border: 2px solid #555;
+            color: #ccc;
+            padding: 8px 16px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .retro-button:hover {
+            background: #444;
+            border-color: #777;
+            box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        }
+        
+        .retro-button:active {
+            background: #222;
+            transform: translateY(1px);
+        }
+        
+        .terminal-input:focus {
+            outline: none;
+            background: transparent;
+        }
+        
+        /* Color scheme classes */
+        .theme-amber { color: #FFA500; }
+        .theme-green-matrix { color: #00FF41; }
+        .theme-blue-ibm { color: #00AAFF; }
+        .theme-green-apple { color: #41FF00; background-color: #001100; }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, currentColor 0%, currentColor var(--progress, 0%), transparent var(--progress, 0%));
+        }
+        
+        @media (max-width: 768px) {
+            .crt-monitor {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            .terminal-content {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4 font-mono">
+    <!-- CRT Monitor Container -->
+    <div class="crt-monitor w-full max-w-6xl h-[90vh] min-h-[600px] p-6">
+        <!-- Monitor Bezel -->
+        <div class="crt-screen h-full relative bg-black">
+            <!-- Scanlines -->
+            <div class="scanlines"></div>
+            <div class="scanline-animation animate-scanline"></div>
+            
+            <!-- Terminal Interface -->
+            <div id="terminal" class="terminal-content theme-amber phosphor-glow h-full p-6 overflow-hidden flex flex-col relative z-20">
+                <!-- Terminal Header -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold">ETHOS TERMINAL v2.1</span>
+                        <div class="flex gap-2">
+                            <button id="settings-btn" class="retro-button text-xs">SETTINGS</button>
+                            <button id="sound-toggle" class="retro-button text-xs">SOUND: ON</button>
+                        </div>
+                    </div>
+                    <div class="h-px bg-current opacity-30 mb-4"></div>
+                </div>
+                
+                <!-- Terminal Output -->
+                <div id="output" class="flex-1 overflow-y-auto mb-4 space-y-1">
+                    <!-- Boot sequence will be inserted here -->
+                </div>
+                
+                <!-- Terminal Input Line -->
+                <div class="flex items-center">
+                    <span id="prompt" class="mr-2">ethos@terminal:~$</span>
+                    <input 
+                        id="input" 
+                        type="text" 
+                        class="terminal-input flex-1 bg-transparent border-none text-current font-mono phosphor-glow"
+                        autocomplete="off"
+                        spellcheck="false"
+                        data-mock="true"
+                    />
+                    <span id="cursor" class="animate-cursor-blink ml-1">█</span>
+                </div>
+                
+                <!-- Mobile Quick Actions -->
+                <div class="md:hidden mt-4 flex gap-2 flex-wrap">
+                    <button class="retro-button text-xs" onclick="executeCommand('help')">HELP</button>
+                    <button class="retro-button text-xs" onclick="executeCommand('clear')">CLEAR</button>
+                    <button class="retro-button text-xs" onclick="executeCommand('history')">HISTORY</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Panel (Hidden by default) -->
+    <div id="settings-panel" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50">
+        <div class="bg-gray-900 border-2 border-gray-600 p-6 rounded-lg max-w-md w-full mx-4">
+            <h3 class="font-bold mb-4 text-amber-terminal">TERMINAL SETTINGS</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm mb-2 text-gray-300">COLOR SCHEME</label>
+                    <select id="color-scheme" class="w-full bg-gray-800 border border-gray-600 p-2 text-gray-300 font-mono">
+                        <option value="amber">Classic Amber</option>
+                        <option value="green-matrix">Matrix Green</option>
+                        <option value="blue-ibm">IBM Blue</option>
+                        <option value="green-apple">Apple II Green</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm mb-2 text-gray-300">SOUND EFFECTS</label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="sound-enabled" checked class="mr-2">
+                        <span class="text-gray-300">Enable typing sounds</span>
+                    </label>
+                </div>
+                
+                <div>
+                    <label class="block text-sm mb-2 text-gray-300">SCAN LINES</label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="scanlines-enabled" checked class="mr-2">
+                        <span class="text-gray-300">Enable scan line effects</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-6">
+                <button id="save-settings" class="retro-button flex-1">SAVE</button>
+                <button id="close-settings" class="retro-button flex-1">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Terminal state
+            let commandHistory = [];
+            let historyIndex = -1;
+            let currentTheme = 'amber';
+            let soundEnabled = true;
+            let isBooting = true;
+            
+            // Mock user data
+            const mockUserData = {
+                address: '0x1234...abcd',
+                xp: 1420,
+                weeklyXp: 420,
+                attestations: 12,
+                reputation: 3.2,
+                rank: 1247,
+                rankChange: 5
+            };
+            
+            // Elements
+            const terminal = document.getElementById('terminal');
+            const output = document.getElementById('output');
+            const input = document.getElementById('input');
+            const cursor = document.getElementById('cursor');
+            const settingsBtn = document.getElementById('settings-btn');
+            const soundToggle = document.getElementById('sound-toggle');
+            const settingsPanel = document.getElementById('settings-panel');
+            
+            // Initialize terminal
+            function init() {
+                bootSequence();
+                setupEventListeners();
+                loadSettings();
+            }
+            
+            // Boot sequence animation
+            function bootSequence() {
+                const bootMessages = [
+                    'ETHOS TERMINAL v2.1 INITIALIZING...',
+                    'LOADING WEB3 REPUTATION MODULE...',
+                    'CONNECTING TO GROQ AI NETWORK...',
+                    'ESTABLISHING ETHOS API CONNECTION...',
+                    'SCANNING BLOCKCHAIN DATA...',
+                    'NATURAL LANGUAGE PROCESSOR: ONLINE',
+                    'ATTESTATION ANALYZER: READY',
+                    'REPUTATION CALCULATOR: ACTIVE',
+                    '',
+                    'SYSTEM READY. TYPE "help" FOR AVAILABLE COMMANDS.',
+                    'ASK NATURAL LANGUAGE QUESTIONS ABOUT ETHOS NETWORK DATA.',
+                    ''
+                ];
+                
+                let i = 0;
+                const bootInterval = setInterval(() => {
+                    if (i < bootMessages.length) {
+                        addOutput(bootMessages[i], false);
+                        i++;
+                    } else {
+                        clearInterval(bootInterval);
+                        isBooting = false;
+                        input.focus();
+                    }
+                }, 300);
+            }
+            
+            // Setup event listeners
+            function setupEventListeners() {
+                input.addEventListener('keydown', handleInput);
+                settingsBtn.addEventListener('click', () => settingsPanel.classList.remove('hidden'));
+                soundToggle.addEventListener('click', toggleSound);
+                
+                document.getElementById('close-settings').addEventListener('click', () => {
+                    settingsPanel.classList.add('hidden');
+                });
+                
+                document.getElementById('save-settings').addEventListener('click', saveSettings);
+                
+                document.getElementById('color-scheme').addEventListener('change', (e) => {
+                    changeTheme(e.target.value);
+                });
+                
+                // Focus input when clicking anywhere on terminal
+                terminal.addEventListener('click', () => {
+                    if (!isBooting) input.focus();
+                });
+            }
+            
+            // Handle input
+            function handleInput(e) {
+                if (isBooting) return;
+                
+                if (e.key === 'Enter') {
+                    const command = input.value.trim();
+                    if (command) {
+                        addOutput(`ethos@terminal:~$ ${command}`, false);
+                        executeCommand(command);
+                        commandHistory.unshift(command);
+                        historyIndex = -1;
+                    }
+                    input.value = '';
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (historyIndex < commandHistory.length - 1) {
+                        historyIndex++;
+                        input.value = commandHistory[historyIndex];
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (historyIndex > 0) {
+                        historyIndex--;
+                        input.value = commandHistory[historyIndex];
+                    } else if (historyIndex === 0) {
+                        historyIndex = -1;
+                        input.value = '';
+                    }
+                } else if (soundEnabled && e.key.length === 1) {
+                    playTypingSound();
+                }
+            }
+            
+            // Execute commands
+            function executeCommand(command) {
+                const cmd = command.toLowerCase().trim();
+                
+                // Add loading flicker effect
+                terminal.classList.add('animate-screen-flicker');
+                setTimeout(() => terminal.classList.remove('animate-screen-flicker'), 150);
+                
+                setTimeout(() => {
+                    if (cmd === 'help') {
+                        showHelp();
+                    } else if (cmd === 'clear') {
+                        clearTerminal();
+                    } else if (cmd === 'history') {
+                        showHistory();
+                    } else if (cmd === 'export') {
+                        exportSession();
+                    } else if (cmd === 'about') {
+                        showAbout();
+                    } else if (cmd === 'settings') {
+                        settingsPanel.classList.remove('hidden');
+                    } else {
+                        // Natural language query
+                        processNaturalLanguage(command);
+                    }
+                }, 300);
+            }
+            
+            // Process natural language queries
+            function processNaturalLanguage(query) {
+                addOutput('ANALYZING QUERY...', false);
+                addOutput('CONNECTING TO GROQ AI...', false);
+                
+                setTimeout(() => {
+                    const response = generateAIResponse(query);
+                    addOutput('', false);
+                    response.forEach(line => addOutput(line, false));
+                    addOutput('', false);
+                }, 1000);
+            }
+            
+            // Generate AI responses based on query
+            function generateAIResponse(query) {
+                const q = query.toLowerCase();
+                
+                if (q.includes('xp') || q.includes('experience')) {
+                    if (q.includes('week')) {
+                        return [
+                            'SCANNING ETHOS NETWORK...',
+                            `USER: ${mockUserData.address}`,
+                            `WEEKLY XP GAINED: ${mockUserData.weeklyXp} POINTS`,
+                            `RANK CHANGE: +${mockUserData.rankChange} POSITIONS`,
+                            'ANALYSIS COMPLETE. ⚡'
+                        ];
+                    } else {
+                        return [
+                            'XP ANALYSIS COMPLETE:',
+                            `├─ TOTAL XP: ${mockUserData.xp.toLocaleString()} POINTS`,
+                            `├─ CURRENT RANK: #${mockUserData.rank.toLocaleString()}`,
+                            `├─ WEEKLY GAIN: +${mockUserData.weeklyXp} XP`,
+                            `└─ TREND: UPWARD 📈`,
+                            '',
+                            'KEEP BUILDING YOUR REPUTATION! 🚀'
+                        ];
+                    }
+                } else if (q.includes('compare') || q.includes('vs')) {
+                    return [
+                        'COMPARATIVE ANALYSIS INITIATED...',
+                        'YOU vs VITALIK.ETH:',
+                        `├─ XP: ${mockUserData.xp.toLocaleString()} vs 15,240 (-13,820)`,
+                        `├─ ATTESTATIONS: ${mockUserData.attestations} vs 89 (-77)`,
+                        `├─ REPUTATION: ${mockUserData.reputation} vs 4.8 (-1.6)`,
+                        '└─ GROWTH: +5% vs +2% (+3%)',
+                        '',
+                        'KEEP BUILDING! 📈'
+                    ];
+                } else if (q.includes('attestation')) {
+                    return [
+                        'ATTESTATION ANALYSIS...',
+                        'TOP ATTESTERS FOR YOU:',
+                        '1. @alice.eth     - 5 attestations',
+                        '2. @bob.eth       - 3 attestations',
+                        '3. @charlie.eth   - 2 attestations',
+                        '',
+                        `TOTAL: ${mockUserData.attestations} ATTESTATIONS THIS MONTH 🎯`
+                    ];
+                } else if (q.includes('reputation') || q.includes('score')) {
+                    return [
+                        'REPUTATION ANALYSIS:',
+                        `├─ CURRENT SCORE: ${mockUserData.reputation}/5.0`,
+                        '├─ TREND: ↗️ INCREASING',
+                        '├─ PERCENTILE: 68TH',
+                        '└─ CATEGORY: TRUSTED CONTRIBUTOR',
+                        '',
+                        'REPUTATION BUILDING SUGGESTIONS:',
+                        '• INCREASE ATTESTATION FREQUENCY',
+                        '• ENGAGE WITH HIGH-REP USERS',
+                        '• MAINTAIN CONSISTENT ACTIVITY'
+                    ];
+                } else if (q.includes('leaderboard') || q.includes('top')) {
+                    return [
+                        'ETHOS NETWORK LEADERBOARD:',
+                        '',
+                        'TOP 5 BY XP THIS WEEK:',
+                        '1. 🏆 @vitalik.eth    - 2,150 XP',
+                        '2. 🥈 @satoshi.btc    - 1,890 XP',
+                        '3. 🥉 @ethereum.org   - 1,650 XP',
+                        '4. ⭐ @alice.eth      - 1,420 XP',
+                        '5. ⭐ @bob.eth        - 1,280 XP',
+                        '',
+                        `YOUR POSITION: #${mockUserData.rank} (${mockUserData.xp} XP)`
+                    ];
+                } else {
+                    // Generic AI response
+                    return [
+                        'AI PROCESSING COMPLETE.',
+                        '',
+                        'I can help you with:',
+                        '• XP and reputation queries',
+                        '• User comparisons and rankings',
+                        '• Attestation analysis',
+                        '• Trend visualization',
+                        '• Leaderboard information',
+                        '',
+                        'Try asking: "What was my XP this week?"',
+                        'Or: "Compare me with @vitalik"'
+                    ];
+                }
+            }
+            
+            // Terminal commands
+            function showHelp() {
+                const helpText = [
+                    'ETHOS TERMINAL - AVAILABLE COMMANDS:',
+                    '',
+                    'SYSTEM COMMANDS:',
+                    '  help      - Show this help message',
+                    '  clear     - Clear terminal screen',
+                    '  history   - Show command history',
+                    '  export    - Download session log',
+                    '  settings  - Open settings panel',
+                    '  about     - Show system information',
+                    '',
+                    'NATURAL LANGUAGE QUERIES:',
+                    '  "What was my XP this week?"',
+                    '  "Compare me with @vitalik"',
+                    '  "Who gave me attestations?"',
+                    '  "Show top users by reputation"',
+                    '  "What\'s my reputation trend?"',
+                    '',
+                    'SHORTCUTS:',
+                    '  ↑/↓ arrows - Navigate command history',
+                    '  Tab        - Auto-complete (coming soon)',
+                    '  Ctrl+L     - Clear screen',
+                    ''
+                ];
+                
+                helpText.forEach(line => addOutput(line, false));
+            }
+            
+            function clearTerminal() {
+                output.innerHTML = '';
+            }
+            
+            function showHistory() {
+                addOutput('COMMAND HISTORY:', false);
+                addOutput('', false);
+                if (commandHistory.length === 0) {
+                    addOutput('No commands in history.', false);
+                } else {
+                    commandHistory.slice(0, 10).forEach((cmd, i) => {
+                        addOutput(`${i + 1}. ${cmd}`, false);
+                    });
+                }
+                addOutput('', false);
+            }
+            
+            function exportSession() {
+                const sessionData = output.textContent;
+                const blob = new Blob([sessionData], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ethos-terminal-session-${new Date().toISOString().slice(0, 10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                addOutput('SESSION EXPORTED TO DOWNLOADS FOLDER.', false);
+                addOutput('', false);
+            }
+            
+            function showAbout() {
+                const aboutText = [
+                    'ETHOS AI TERMINAL v2.1',
+                    '═══════════════════════',
+                    '',
+                    'Powered by:',
+                    '• Groq AI (Llama 3.1 70B)',
+                    '• Ethos Network APIs',
+                    '• Web3 Reputation Protocol',
+                    '',
+                    'Features:',
+                    '• Natural language queries',
+                    '• Real-time data analysis',
+                    '• Retro CRT aesthetics',
+                    '• Mobile-optimized interface',
+                    '',
+                    'Built for the Ethos Network community.',
+                    'Where Web3 reputation meets retro computing.',
+                    ''
+                ];
+                
+                aboutText.forEach(line => addOutput(line, false));
+            }
+            
+            // Add output to terminal
+            function addOutput(text, isInput = false) {
+                const line = document.createElement('div');
+                line.textContent = text;
+                line.className = 'animate-boot-text';
+                if (isInput) line.className += ' text-blue-400';
+                output.appendChild(line);
+                output.scrollTop = output.scrollHeight;
+            }
+            
+            // Sound effects
+            function playTypingSound() {
+                if (!soundEnabled) return;
+                // Mock typing sound - in real implementation, would play actual audio
+                // const audio = new Audio('/sounds/keypress.wav');
+                // audio.volume = 0.1;
+                // audio.play().catch(() => {});
+            }
+            
+            function toggleSound() {
+                soundEnabled = !soundEnabled;
+                soundToggle.textContent = `SOUND: ${soundEnabled ? 'ON' : 'OFF'}`;
+                localStorage.setItem('ethosTerminalSound', soundEnabled);
+            }
+            
+            // Theme management
+            function changeTheme(theme) {
+                terminal.className = terminal.className.replace(/theme-\w+/g, '');
+                terminal.classList.add(`theme-${theme}`);
+                currentTheme = theme;
+                
+                // Handle Apple II special background
+                const screen = document.querySelector('.crt-screen');
+                if (theme === 'green-apple') {
+                    screen.style.backgroundColor = '#001100';
+                } else {
+                    screen.style.backgroundColor = '#000000';
+                }
+            }
+            
+            // Settings management
+            function saveSettings() {
+                const colorScheme = document.getElementById('color-scheme').value;
+                const soundEnabled = document.getElementById('sound-enabled').checked;
+                const scanlinesEnabled = document.getElementById('scanlines-enabled').checked;
+                
+                changeTheme(colorScheme);
+                this.soundEnabled = soundEnabled;
+                soundToggle.textContent = `SOUND: ${soundEnabled ? 'ON' : 'OFF'}`;
+                
+                const scanlines = document.querySelector('.scanlines');
+                const scanlineAnim = document.querySelector('.scanline-animation');
+                if (scanlinesEnabled) {
+                    scanlines.style.display = 'block';
+                    scanlineAnim.style.display = 'block';
+                } else {
+                    scanlines.style.display = 'none';
+                    scanlineAnim.style.display = 'none';
+                }
+                
+                // Save to localStorage
+                localStorage.setItem('ethosTerminalTheme', colorScheme);
+                localStorage.setItem('ethosTerminalSound', soundEnabled);
+                localStorage.setItem('ethosTerminalScanlines', scanlinesEnabled);
+                
+                settingsPanel.classList.add('hidden');
+                addOutput('SETTINGS SAVED.', false);
+            }
+            
+            function loadSettings() {
+                const savedTheme = localStorage.getItem('ethosTerminalTheme') || 'amber';
+                const savedSound = localStorage.getItem('ethosTerminalSound') !== 'false';
+                const savedScanlines = localStorage.getItem('ethosTerminalScanlines') !== 'false';
+                
+                document.getElementById('color-scheme').value = savedTheme;
+                document.getElementById('sound-enabled').checked = savedSound;
+                document.getElementById('scanlines-enabled').checked = savedScanlines;
+                
+                changeTheme(savedTheme);
+                soundEnabled = savedSound;
+                soundToggle.textContent = `SOUND: ${savedSound ? 'ON' : 'OFF'}`;
+                
+                if (!savedScanlines) {
+                    document.querySelector('.scanlines').style.display = 'none';
+                    document.querySelector('.scanline-animation').style.display = 'none';
+                }
+            }
+            
+            // Global command execution function
+            window.executeCommand = executeCommand;
+            
+            // Initialize on load
+            init();
+        })();
+    </script>
+</body>
+</html>

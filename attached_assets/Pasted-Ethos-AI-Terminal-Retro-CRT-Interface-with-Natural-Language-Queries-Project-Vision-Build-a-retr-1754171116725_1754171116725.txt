@@ -1,0 +1,188 @@
+Ethos AI Terminal - Retro CRT Interface with Natural Language Queries
+🎯 Project Vision
+Build a retro CRT terminal interface where users can ask natural language questions about Ethos Network data and get AI-powered responses. Think "1980s computer terminal meets modern AI assistant" for Web3 reputation lookups.
+🖥️ Core User Experience
+Users type natural questions like:
+
+"What was my weekly reward?"
+"How much XP did @vitalik earn this month?"
+"Compare my attestations with @dwr"
+"Who gave me the most positive reviews?"
+"What's my reputation score trend?"
+
+The AI interprets, fetches real Ethos data via API, and responds in authentic retro terminal style.
+🎨 Retro CRT Aesthetic
+
+Authentic CRT monitor with curved screen edges and subtle glow
+Amber/green phosphor text on dark background (user choice)
+Scan line animation constantly scrolling
+Typing sound effects (optional toggle)
+Boot sequence on first load: "ETHOS TERMINAL v2.1 INITIALIZING..."
+Cursor blink and authentic terminal prompt
+Screen flicker effects during data loading
+Mobile responsive but maintains retro feel
+
+🤖 AI-Powered Features
+Natural Language Processing
+
+Groq API integration for lightning-fast responses
+Intent recognition: XP queries, attestation lookups, comparisons, trends
+Smart parameter extraction: usernames, timeframes, metrics
+Conversational memory: remembers context within session
+
+Query Types to Support
+
+Personal Stats: "My XP this week", "My attestation count"
+User Comparisons: "Compare @alice vs @bob reputation"
+Leaderboards: "Top 10 users by XP", "Most active attesters"
+Trends: "XP growth this month", "Reputation changes"
+Social Graph: "Who attested for me?", "My network connections"
+Historical Data: "My stats in January", "Best performing month"
+
+Smart Features
+
+Auto-suggest prompts based on user's address
+Follow-up questions: AI suggests related queries
+Data visualization: ASCII charts for trends
+Export terminal logs as shareable text
+Keyboard shortcuts: Up arrow for command history
+
+🔌 Technical Implementation
+Tech Stack
+
+Frontend: Vanilla JS/HTML/CSS (fast loading)
+AI: Groq API (Llama 3.1 70B or Mixtral)
+Ethos Data: Ethos Network APIs
+Storage: localStorage for session history
+PWA: Service worker for offline terminal access
+
+API Integration Flow
+1. User Input → "What was my XP this week?"
+2. Groq AI → Extracts: user_address, metric="XP", timeframe="week"
+3. API Call → GET /ethos/user/{address}/xp?period=7days
+4. Groq AI → Formats response in terminal style
+5. Display → "ANALYSIS COMPLETE... YOUR WEEKLY XP: 420 POINTS"
+File Structure
+ethos-terminal/
+├── index.html          # Main CRT interface
+├── styles/
+│   ├── crt.css         # CRT monitor effects
+│   ├── terminal.css    # Terminal styling
+│   └── mobile.css      # Mobile responsive
+├── js/
+│   ├── terminal.js     # Core terminal logic
+│   ├── ai.js           # Groq API integration
+│   ├── ethos-api.js    # Ethos Network API calls
+│   └── effects.js      # CRT visual effects
+├── sounds/             # Terminal sound effects
+└── manifest.json       # PWA configuration
+🎮 Advanced Features
+Terminal Commands (Beyond Natural Language)
+
+help - Show available query examples
+clear - Clear terminal screen
+history - Show recent queries
+export - Download terminal session
+settings - Toggle sounds, colors, effects
+about - Show Ethos Network info
+
+Smart Shortcuts
+
+@username detection: Auto-complete known Ethos users
+Time period shortcuts: "today", "this week", "last month"
+Metric shortcuts: "xp", "attestations", "reputation"
+Quick actions: Press Tab for suggestions
+
+Data Presentation
+
+ASCII art charts for trend data
+Terminal tables for comparisons
+Progress bars for XP/reputation levels
+Color coding: Green for positive, red for negative changes
+Emojis in terminal: ⚡ for power users, 🏆 for top performers
+
+🎨 Visual Details
+Color Schemes (User Choice)
+
+Classic Amber: Amber text on black (#FFA500 on #000000)
+Matrix Green: Green text on black (#00FF41 on #000000)
+IBM Blue: Blue text on black (#00AAFF on #000000)
+Apple II: Green text on dark green (#41FF00 on #001100)
+
+Typography
+
+Font: 'IBM Plex Mono', 'Courier New', monospace
+Size: 14px mobile, 16px desktop
+Line height: 1.4 for readability
+Letter spacing: 0.5px for authentic feel
+
+Effects
+
+Screen curve: CSS border-radius and transform
+Phosphor glow: Text-shadow effects
+Scan lines: CSS pseudo-elements with animation
+Flicker: Occasional opacity changes during loading
+Boot sequence: Animated text reveal on startup
+
+📱 Mobile Optimization
+
+Touch-friendly input with large terminal area
+Swipe gestures: Swipe up for history, down for suggestions
+Virtual keyboard optimized for terminal use
+Haptic feedback on interactions (if supported)
+Portrait orientation prioritized
+Quick action buttons: [History] [Clear] [Help] [Settings]
+
+🚀 Smart AI Examples
+Sample Conversations
+> What was my XP this week?
+SCANNING ETHOS NETWORK...
+USER: 0x1234...abcd
+WEEKLY XP GAINED: 420 POINTS
+RANK CHANGE: +5 POSITIONS
+ANALYSIS COMPLETE.
+
+> Compare me with @vitalik
+COMPARATIVE ANALYSIS INITIATED...
+YOU vs VITALIK.ETH:
+├─ XP: 420 vs 15,240 (-14,820)
+├─ ATTESTATIONS: 12 vs 89 (-77)  
+├─ REPUTATION: 3.2 vs 4.8 (-1.6)
+└─ GROWTH: +5% vs +2% (+3%)
+KEEP BUILDING! 📈
+
+> Who gave me attestations this month?
+ATTESTATION ANALYSIS...
+TOP ATTESTERS FOR YOU:
+1. @alice.eth     - 5 attestations
+2. @bob.eth       - 3 attestations  
+3. @charlie.eth   - 2 attestations
+TOTAL: 10 ATTESTATIONS THIS MONTH
+🎯 Success Metrics
+
+Response time: Under 2 seconds for any query
+Accuracy: 95%+ correct API data retrieval
+Mobile usability: One-handed operation
+Retention: Users return to check weekly stats
+Viral factor: Terminal screenshots get shared
+
+🔧 Development Priorities
+
+Core terminal interface with CRT effects
+Groq AI integration for natural language
+Basic Ethos API calls (XP, attestations)
+Mobile optimization and PWA setup
+Advanced queries and data visualization
+Polish effects and sound integration
+
+🎪 Unique Selling Points
+
+First AI-powered Ethos terminal
+Natural language queries instead of complex commands
+Authentic retro aesthetic that's Instagram-worthy
+Lightning fast responses via Groq
+Mobile-first design for on-the-go reputation checking
+Conversation memory for follow-up questions
+
+
+Build this as the ultimate Ethos Network companion - where Web3 reputation meets retro computing aesthetics and modern AI. Make it addictive, shareable, and genuinely useful.
