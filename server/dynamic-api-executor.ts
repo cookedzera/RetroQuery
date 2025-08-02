@@ -98,43 +98,90 @@ export class DynamicAPIExecutor {
       };
     }
 
-    // Calculate timeframe-specific XP
+    // Get real XP data using new Ethos API endpoints
     const now = new Date();
     let periodStart = new Date();
     let timeframeXP = 0;
-    const totalXP = (profile as any).xpTotal || 0;
+    let weeklyDetails = null;
+    let currentSeason = null;
     
-    switch (timeframe) {
-      case 'day':
-        periodStart.setDate(now.getDate() - 1);
-        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
-        break;
-      case 'week':
-        periodStart.setDate(now.getDate() - 7);
-        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
-        break;
-      case 'month':
-        periodStart.setMonth(now.getMonth() - 1);
-        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
-        break;
-      case 'year':
-        periodStart.setFullYear(now.getFullYear() - 1);
-        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
-        break;
-      default:
-        timeframeXP = totalXP; // All time = total XP
-        periodStart = new Date(0);
+    try {
+      // Get current season and total XP
+      [currentSeason] = await Promise.all([
+        ethosClient.getCurrentSeason()
+      ]);
+      
+      // totalXP will be fetched later to avoid duplication
+      
+      switch (timeframe) {
+        case 'day':
+          // Daily XP not supported by API - return 0
+          periodStart.setDate(now.getDate() - 1);
+          timeframeXP = 0;
+          break;
+        case 'week':
+          // Get real weekly XP from current season
+          if (currentSeason) {
+            const weeklyData = await ethosClient.getUserWeeklyXP(userkey, currentSeason.id);
+            if (weeklyData && weeklyData.length > 0) {
+              const currentWeekData = weeklyData[weeklyData.length - 1];
+              timeframeXP = currentWeekData.weeklyXp || 0;
+              weeklyDetails = {
+                currentWeek: currentSeason.week,
+                weeklyXP: currentWeekData.weeklyXp || 0,
+                cumulativeSeasonXP: currentWeekData.cumulativeXp || 0
+              };
+            }
+          }
+          periodStart.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          // Aggregate last 4 weeks for monthly data
+          if (currentSeason) {
+            const weeklyData = await ethosClient.getUserWeeklyXP(userkey, currentSeason.id);
+            if (weeklyData && weeklyData.length >= 4) {
+              const last4Weeks = weeklyData.slice(-4);
+              timeframeXP = last4Weeks.reduce((sum, week) => sum + (week.weeklyXp || 0), 0);
+            }
+          }
+          periodStart.setMonth(now.getMonth() - 1);
+          break;
+        case 'season':
+          // Get season XP
+          if (currentSeason) {
+            timeframeXP = await ethosClient.getUserSeasonXP(userkey, currentSeason.id);
+          }
+          periodStart = new Date(now.getFullYear(), 0, 1);
+          break;
+        case 'year':
+          // Year timeframe uses total XP
+          const yearlyTotalXP = await ethosClient.getUserTotalXP(userkey);
+          timeframeXP = yearlyTotalXP;
+          periodStart.setFullYear(now.getFullYear() - 1);
+          break;
+        default:
+          // All time = total XP
+          const allTimeTotalXP = await ethosClient.getUserTotalXP(userkey);
+          timeframeXP = allTimeTotalXP;
+          periodStart = new Date(0);
+      }
+    } catch (error) {
+      console.error('Error fetching XP data:', error);
+      // Fallback to profile XP if API calls fail
+      timeframeXP = 0;
     }
     
     const stats = {
       ...profile,
-      totalXP: totalXP,
-      timeframeXP: timeframeXP, // XP for the specific timeframe
+      totalXP: await ethosClient.getUserTotalXP(userkey),
+      timeframeXP: timeframeXP, // Real XP for the specific timeframe
       timeframe,
       periodRange: {
         start: periodStart.toISOString(),
         end: now.toISOString()
-      }
+      },
+      weeklyDetails,
+      currentSeason
     };
     
     return {

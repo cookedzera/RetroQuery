@@ -205,14 +205,21 @@ export function useTerminal() {
               if (data.timeframe && data.timeframe !== 'all') {
                 const timeframeName = data.timeframe.charAt(0).toUpperCase() + data.timeframe.slice(1);
                 addOutput(`│ ${timeframeName} XP: ${String(data.timeframeXP || 0).padEnd(35)} │`);
-                addOutput('│ (Ethos API doesn\'t provide timeframe-specific data)│');
+                
+                // Show additional weekly details if available
+                if (data.weeklyDetails && data.timeframe === 'week') {
+                  addOutput(`│ Current Week: ${String(data.weeklyDetails.currentWeek).padEnd(33)} │`);
+                  addOutput(`│ Season Total: ${String(data.weeklyDetails.cumulativeSeasonXP?.toLocaleString() || 0).padEnd(33)} │`);
+                }
+                
                 addOutput(`│ Total XP: ${String(data.totalXP?.toLocaleString() || 0).padEnd(37)} │`);
+                
+                // Show season info if available
+                if (data.currentSeason) {
+                  addOutput(`│ Season: ${String(data.currentSeason.name || `Season ${data.currentSeason.id}`).padEnd(39)} │`);
+                }
               } else {
                 addOutput(`│ Total XP: ${String(data.totalXP?.toLocaleString() || 0).padEnd(37)} │`);
-              }
-              if (data.timeframe) {
-                const timeframeName = data.timeframe.charAt(0).toUpperCase() + data.timeframe.slice(1);
-                addOutput(`│ Timeframe: ${timeframeName.padEnd(36)} │`);
               }
               addOutput('└─────────────────────────────────────────────────────┘');
               addOutput('');

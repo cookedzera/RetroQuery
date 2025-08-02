@@ -308,6 +308,91 @@ export class EthosNetworkClient {
       return { profile1: null, profile2: null, comparison: null };
     }
   }
+
+  // XP API Methods
+  async getCurrentSeason(): Promise<{ id: number; name: string; week: number }> {
+    try {
+      const data = await this.request('/xp/seasons');
+      return data.currentSeason;
+    } catch (error) {
+      console.error('Error fetching current season:', error);
+      throw error;
+    }
+  }
+
+  async getUserTotalXP(userkey: string): Promise<number> {
+    try {
+      // Get user profile with Twitter/X lookup to find proper userkey
+      const xResult = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (!xResult || xResult.length === 0 || !xResult[0].userkeys || xResult[0].userkeys.length === 0) {
+        return 0;
+      }
+      
+      const ethosUserkey = xResult[0].userkeys[0]; // Use the first userkey from Ethos
+      const xp = await this.request(`/xp/user/${encodeURIComponent(ethosUserkey)}`);
+      return xp || 0;
+    } catch (error) {
+      console.error('Error fetching user total XP:', error);
+      return 0;
+    }
+  }
+
+  async getUserSeasonXP(userkey: string, seasonId: number): Promise<number> {
+    try {
+      // Get user profile with Twitter/X lookup to find proper userkey
+      const xResult = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (!xResult || xResult.length === 0 || !xResult[0].userkeys || xResult[0].userkeys.length === 0) {
+        return 0;
+      }
+      
+      const ethosUserkey = xResult[0].userkeys[0]; // Use the first userkey from Ethos
+      const xp = await this.request(`/xp/user/${encodeURIComponent(ethosUserkey)}/season/${seasonId}`);
+      return xp || 0;
+    } catch (error) {
+      console.error('Error fetching user season XP:', error);
+      return 0;
+    }
+  }
+
+  async getUserWeeklyXP(userkey: string, seasonId: number): Promise<Array<{ week: number; weeklyXp: number; cumulativeXp: number }>> {
+    try {
+      // Get user profile with Twitter/X lookup to find proper userkey
+      const xResult = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (!xResult || xResult.length === 0 || !xResult[0].userkeys || xResult[0].userkeys.length === 0) {
+        return [];
+      }
+      
+      const ethosUserkey = xResult[0].userkeys[0]; // Use the first userkey from Ethos
+      const weeklyData = await this.request(`/xp/user/${encodeURIComponent(ethosUserkey)}/season/${seasonId}/weekly`);
+      return weeklyData || [];
+    } catch (error) {
+      console.error('Error fetching user weekly XP:', error);
+      return [];
+    }
+  }
+
+  async getUserXPRank(userkey: string): Promise<number> {
+    try {
+      const formattedUserkey = this.formatUserkey(userkey);
+      const rank = await this.request(`/xp/user/${encodeURIComponent(formattedUserkey)}/leaderboard-rank`);
+      return rank || 0;
+    } catch (error) {
+      console.error('Error fetching user XP rank:', error);
+      return 0;
+    }
+  }
 }
 
 export const ethosClient = new EthosNetworkClient();
