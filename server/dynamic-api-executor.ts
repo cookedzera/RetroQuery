@@ -98,8 +98,8 @@ export class DynamicAPIExecutor {
       };
     }
 
-    // For XP queries, use the dedicated XP endpoint
-    const totalXP = await ethosClient.getUserXP(userkey);
+    // Use the XP from the profile data directly (already fetched from API)
+    const totalXP = (profile as any).xpTotal || 0;
     
     // Calculate timeframe-specific stats
     const now = new Date();

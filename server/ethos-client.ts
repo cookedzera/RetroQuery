@@ -163,7 +163,7 @@ export class EthosNetworkClient {
     return null;
   }
 
-  private transformUserData(userData: any): EthosProfile {
+  private transformUserData(userData: any): EthosProfile & { xpTotal: number } {
     return {
       address: userData.userkeys?.[0] || userData.id?.toString() || '',
       score: userData.score || 0,
@@ -174,7 +174,8 @@ export class EthosNetworkClient {
         score: userData.score || 0,
         rank: 0, // Not provided in API response
         percentile: 0 // Not provided in API response
-      }
+      },
+      xpTotal: userData.xpTotal || 0
     };
   }
 
