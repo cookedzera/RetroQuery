@@ -178,11 +178,39 @@ export class EthosNetworkClient {
     };
   }
 
+  async getUserXP(userkey: string): Promise<number> {
+    try {
+      // First get the profile to find the correct userkey format
+      const profile = await this.getProfileData(userkey);
+      if (!profile || !profile.address) {
+        return 0;
+      }
+      
+      // Use the correct userkey from the profile data
+      const correctUserkey = profile.address;
+      const xpTotal = await this.request(`/xp/user/${encodeURIComponent(correctUserkey)}`);
+      return typeof xpTotal === 'number' ? xpTotal : 0;
+    } catch (error) {
+      console.error(`Failed to get XP for ${userkey}:`, error);
+      return 0;
+    }
+  }
+
+  async getUserXPBySeasonAndWeek(userkey: string, seasonId: number): Promise<any[]> {
+    try {
+      // Get weekly XP data for a specific season
+      const weeklyData = await this.request(`/xp/user/${encodeURIComponent(userkey)}/season/${seasonId}/weekly`);
+      return weeklyData || [];
+    } catch (error) {
+      console.error(`Failed to get weekly XP for ${userkey}:`, error);
+      return [];
+    }
+  }
+
   async getActivityObjects(userkey: string, limit: number = 10): Promise<EthosActivity[]> {
     try {
-      const formattedUserkey = this.formatUserkey(userkey);
-      // Based on API docs, use /activities/userkey endpoint
-      const data = await this.request(`/activities/userkey?userkey=${encodeURIComponent(formattedUserkey)}&limit=${limit}`);
+      // Use the correct activities endpoint with userkey parameter
+      const data = await this.request(`/activities/userkey?userkey=${encodeURIComponent(userkey)}&limit=${limit}`);
       return (data || []).map((activity: any) => ({
         id: activity.id || String(Math.random()),
         type: activity.type || 'review',

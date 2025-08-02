@@ -88,7 +88,6 @@ export class DynamicAPIExecutor {
     }
     
     const profile = await ethosClient.getProfileData(userkey);
-    const activity = profile ? await ethosClient.getActivityObjects(userkey, 50) : [];
     
     if (!profile) {
       return {
@@ -98,6 +97,9 @@ export class DynamicAPIExecutor {
         isRealData: false
       };
     }
+
+    // For XP queries, use the dedicated XP endpoint
+    const totalXP = await ethosClient.getUserXP(userkey);
     
     // Calculate timeframe-specific stats
     const now = new Date();
@@ -120,17 +122,14 @@ export class DynamicAPIExecutor {
         periodStart = new Date(0); // All time
     }
     
-    const periodActivity = activity.filter(act => 
-      new Date(act.timestamp) >= periodStart
-    );
-    
-    const periodScore = periodActivity.reduce((sum, act) => sum + (act.score || 0), 0);
-    
     const stats = {
       ...profile,
+      totalXP: totalXP,
       timeframe,
-      periodScore,
-      periodActivity: periodActivity.length
+      periodRange: {
+        start: periodStart.toISOString(),
+        end: now.toISOString()
+      }
     };
     
     return {
