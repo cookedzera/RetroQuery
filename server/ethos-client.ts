@@ -98,30 +98,84 @@ export class EthosNetworkClient {
   }
 
   async getProfileData(userkey: string): Promise<EthosProfile | null> {
-    const formattedUserkey = this.formatUserkey(userkey);
-    return this.getProfileDataWithFormat(formattedUserkey);
+    // Try different lookup methods based on API documentation
+    
+    // 1. Try Farcaster username lookup first (most common for Web3 users)
+    try {
+      const farcasterResult = await this.request('/users/by/farcaster/usernames', {
+        method: 'POST',
+        body: JSON.stringify({ farcasterUsernames: [userkey] })
+      });
+      
+      if (farcasterResult.users && farcasterResult.users.length > 0) {
+        return this.transformUserData(farcasterResult.users[0].user);
+      }
+    } catch (error) {
+      console.log(`Farcaster username lookup failed for ${userkey}`);
+    }
+
+    // 2. Try Twitter/X username lookup
+    try {
+      const xResult = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (xResult && xResult.length > 0) {
+        return this.transformUserData(xResult[0]);
+      }
+    } catch (error) {
+      console.log(`Twitter/X lookup failed for ${userkey}`);
+    }
+
+    // 3. Try as Ethereum address if it looks like one
+    if (userkey.startsWith('0x') && userkey.length === 42) {
+      try {
+        const addressResult = await this.request('/users/by/address', {
+          method: 'POST',
+          body: JSON.stringify({ addresses: [userkey] })
+        });
+        
+        if (addressResult && addressResult.length > 0) {
+          return this.transformUserData(addressResult[0]);
+        }
+      } catch (error) {
+        console.log(`Address lookup failed for ${userkey}`);
+      }
+    }
+
+    // 4. Try as profile ID if it's numeric
+    if (/^\d+$/.test(userkey)) {
+      try {
+        const profileIdResult = await this.request('/users/by/profile-id', {
+          method: 'POST',
+          body: JSON.stringify({ profileIds: [parseInt(userkey)] })
+        });
+        
+        if (profileIdResult && profileIdResult.length > 0) {
+          return this.transformUserData(profileIdResult[0]);
+        }
+      } catch (error) {
+        console.log(`Profile ID lookup failed for ${userkey}`);
+      }
+    }
+
+    return null;
   }
 
-  async getProfileDataWithFormat(formattedUserkey: string): Promise<EthosProfile | null> {
-    try {
-      // Based on API docs, use /users endpoint for profile data
-      const data = await this.request(`/users/${encodeURIComponent(formattedUserkey)}`);
-      return {
-        address: data.primaryAddress || data.address || formattedUserkey,
-        score: data.stats?.score || data.credibilityScore || data.score || 0,
-        reviewCount: data.stats?.reviewCount || data.reviewCount || 0,
-        vouchCount: data.stats?.vouchCount || data.vouchCount || 0,
-        activity: [],
-        credibility: {
-          score: data.stats?.score || data.credibilityScore || data.score || 0,
-          rank: data.stats?.rank || data.rank || 0,
-          percentile: data.stats?.percentile || data.percentile || 0
-        }
-      };
-    } catch (error) {
-      console.error(`Failed to get profile data for ${formattedUserkey}:`, error);
-      return null;
-    }
+  private transformUserData(userData: any): EthosProfile {
+    return {
+      address: userData.userkeys?.[0] || userData.id?.toString() || '',
+      score: userData.score || 0,
+      reviewCount: (userData.stats?.review?.received?.positive || 0) + (userData.stats?.review?.received?.neutral || 0) + (userData.stats?.review?.received?.negative || 0),
+      vouchCount: userData.stats?.vouch?.received?.count || 0,
+      activity: [],
+      credibility: {
+        score: userData.score || 0,
+        rank: 0, // Not provided in API response
+        percentile: 0 // Not provided in API response
+      }
+    };
   }
 
   async getActivityObjects(userkey: string, limit: number = 10): Promise<EthosActivity[]> {

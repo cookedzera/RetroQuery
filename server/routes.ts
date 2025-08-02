@@ -175,31 +175,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userkey } = req.params;
       
-      // Try real Ethos Network API with multiple userkey formats
-      let ethosProfile = null;
-      
-      // Try different userkey formats
-      const formats = [
-        userkey, // Direct username
-        `service:x.com:username:${userkey}`, // Twitter format  
-        `service:farcaster:${userkey}`, // Farcaster format
-        `profileId:${userkey}`, // Profile ID format if it's numeric
-        `address:${userkey}` // Ethereum address format
-      ];
-      
-      for (const format of formats) {
-        try {
-          console.log(`Trying userkey format: ${format}`);
-          ethosProfile = await ethosClient.getProfileDataWithFormat(format);
-          if (ethosProfile) {
-            console.log(`Success with format: ${format}`);
-            break;
-          }
-        } catch (error) {
-          console.log(`Failed with format ${format}:`, error instanceof Error ? error.message : String(error));
-          continue;
-        }
-      }
+      // Try real Ethos Network API with correct POST endpoints
+      console.log(`Looking up user: ${userkey}`);
+      const ethosProfile = await ethosClient.getProfileData(userkey);
       
       if (ethosProfile) {
         res.json({
