@@ -98,33 +98,38 @@ export class DynamicAPIExecutor {
       };
     }
 
-    // Use the XP from the profile data directly (already fetched from API)
-    const totalXP = (profile as any).xpTotal || 0;
-    
-    // Calculate timeframe-specific stats
+    // Calculate timeframe-specific XP
     const now = new Date();
     let periodStart = new Date();
+    let timeframeXP = 0;
+    const totalXP = (profile as any).xpTotal || 0;
     
     switch (timeframe) {
       case 'day':
         periodStart.setDate(now.getDate() - 1);
+        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
         break;
       case 'week':
         periodStart.setDate(now.getDate() - 7);
+        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
         break;
       case 'month':
         periodStart.setMonth(now.getMonth() - 1);
+        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
         break;
       case 'year':
         periodStart.setFullYear(now.getFullYear() - 1);
+        timeframeXP = await ethosClient.getXPForTimeframe(userkey, periodStart, now);
         break;
       default:
-        periodStart = new Date(0); // All time
+        timeframeXP = totalXP; // All time = total XP
+        periodStart = new Date(0);
     }
     
     const stats = {
       ...profile,
       totalXP: totalXP,
+      timeframeXP: timeframeXP, // XP for the specific timeframe
       timeframe,
       periodRange: {
         start: periodStart.toISOString(),

@@ -198,10 +198,15 @@ export function useTerminal() {
           
           switch (specificMetric) {
             case 'xp':
-              if (data.totalXP) {
+              // Show appropriate XP based on timeframe query
+              if (data.timeframe && data.timeframe !== 'all') {
+                // For timeframe queries, show timeframe-specific XP (0 for now since API doesn't provide this)
+                addOutput(`${data.timeframe.toUpperCase()} XP: ${data.timeframeXP || 0} ⚡`);
+                addOutput(`(Note: Ethos API doesn't provide timeframe-specific XP data)`);
                 addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
               } else {
-                addOutput(`XP: ${data.score?.toLocaleString() || 0} ⚡`);
+                // For general XP queries, show total XP
+                addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
               }
               if (data.timeframe) {
                 addOutput(`TIMEFRAME: ${data.timeframe.toUpperCase()}`);

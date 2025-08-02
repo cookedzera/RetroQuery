@@ -68,6 +68,7 @@ Preferred communication style: Simple, everyday language.
 - **✅ Production Ready**: System working end-to-end with GROQ AI + real Ethos Network API v2 integration
 - **✅ FIXED Verbose Responses**: Modified Groq AI system prompt to generate concise responses instead of theatrical multi-line outputs
 - **✅ API Key Integration**: Embedded Groq API key directly in code to resolve environment variable issues
+- **✅ FIXED XP Data Display**: Clarified timeframe vs total XP distinction - weekly queries now show both timeframe-specific (0) and total XP with clear labels
 
 ### Terminal Interface Features
 - **Retro CRT Aesthetics**: Multiple color themes with scanline effects and screen glow

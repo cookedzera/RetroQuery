@@ -208,6 +208,24 @@ export class EthosNetworkClient {
     }
   }
 
+  async getXPForTimeframe(userkey: string, startDate: Date, endDate: Date): Promise<number> {
+    try {
+      // First get the profile to find the correct userkey format
+      const profile = await this.getProfileData(userkey);
+      if (!profile || !profile.address) {
+        return 0;
+      }
+      
+      // For now, return 0 for timeframe-specific XP since Ethos API doesn't provide this granular data
+      // In a real implementation, you would need to aggregate XP activities within the timeframe
+      console.log(`Timeframe XP calculation not implemented for ${userkey} between ${startDate.toISOString()} and ${endDate.toISOString()}`);
+      return 0;
+    } catch (error) {
+      console.error(`Failed to get timeframe XP for ${userkey}:`, error);
+      return 0;
+    }
+  }
+
   async getActivityObjects(userkey: string, limit: number = 10): Promise<EthosActivity[]> {
     try {
       // Use the correct activities endpoint with userkey parameter
