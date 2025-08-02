@@ -136,6 +136,11 @@ export function useTerminal() {
         
         // Display API results if available from the backend
         if (result.apiResult) {
+          // Debug: Log the aiResponse structure
+          console.log('AI Response:', aiResponse);
+          console.log('Parameters:', aiResponse.parameters);
+          console.log('Metric:', aiResponse.parameters?.metric);
+          
           await displayApiResult(result.apiResult, result.extractedIntent, aiResponse.parameters?.metric);
         }
       } else {
@@ -152,6 +157,9 @@ export function useTerminal() {
 
   const displayApiResult = useCallback(async (apiResult: any, intent: string, specificMetric?: string) => {
     try {
+      // Debug: Log what we received
+      console.log('Display function - Intent:', intent);
+      console.log('Display function - Specific Metric:', specificMetric);
       if (!apiResult.success) {
         addOutput(`ERROR: ${apiResult.message || 'API call failed'}`);
         addOutput('');
