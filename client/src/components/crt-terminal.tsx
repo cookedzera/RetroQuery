@@ -93,103 +93,93 @@ export default function CRTTerminal() {
 
   return (
     <>
-      <div className="crt-monitor w-full max-w-6xl h-[90vh] min-h-[600px] p-6">
-        <div className="crt-screen h-full relative bg-black">
-          {/* Scanlines */}
-          {scanlinesEnabled && (
-            <>
-              <div className="scanlines"></div>
-              <div className="scanline-animation animate-scanline"></div>
-            </>
+      <div className="terminal-window w-full max-w-5xl h-[85vh] min-h-[600px] mx-auto">
+        {/* Terminal Title Bar */}
+        <div className="terminal-titlebar">
+          <div className="terminal-controls">
+            <div className="terminal-control close"></div>
+            <div className="terminal-control minimize"></div>
+            <div className="terminal-control maximize"></div>
+          </div>
+          <div className="terminal-title">
+            Ethos Network Terminal
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-gray-400 hover:text-white transition-colors"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+            >
+              Sound: {soundEnabled ? 'On' : 'Off'}
+            </Button>
+          </div>
+        </div>
+        
+        {/* Terminal Content */}
+        <div 
+          ref={terminalRef}
+          className="terminal-content h-full overflow-hidden flex flex-col"
+          onClick={handleTerminalClick}
+        >
+          {/* Terminal Output */}
+          <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+            {output.map((line, index) => (
+              <div key={index} className="leading-relaxed">
+                {line}
+              </div>
+            ))}
+          </div>
+          
+          {/* Terminal Input Line */}
+          {!isBooting && (
+            <div className="flex items-center gap-2 py-2 border-t border-gray-700">
+              <span className="prompt select-none">➜</span>
+              <span className="text-gray-400 select-none">ethos</span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleInputKeyDown}
+                className="flex-1 bg-transparent border-none text-current outline-none placeholder-gray-500"
+                placeholder="Ask about Ethos Network data..."
+                autoComplete="off"
+                spellCheck="false"
+                disabled={isBooting || isLoading}
+              />
+              {isLoading && (
+                <div className="text-gray-400 text-sm">Processing...</div>
+              )}
+            </div>
           )}
           
-          {/* Terminal Interface */}
-          <div 
-            ref={terminalRef}
-            className={`terminal-content ${themeClasses[currentTheme as keyof typeof themeClasses]} phosphor-glow h-full p-6 overflow-hidden flex flex-col relative z-20 ${isLoading ? 'animate-screen-flicker' : ''}`}
-            onClick={handleTerminalClick}
-          >
-            {/* Terminal Header */}
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold">ETHOS TERMINAL v2.1</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="retro-button text-xs"
-                    onClick={() => setShowSettings(true)}
-                  >
-                    SETTINGS
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="retro-button text-xs"
-                    onClick={() => setSoundEnabled(!soundEnabled)}
-                  >
-                    SOUND: {soundEnabled ? 'ON' : 'OFF'}
-                  </Button>
-                </div>
-              </div>
-              <div className="h-px bg-current opacity-30 mb-4"></div>
-            </div>
-            
-            {/* Terminal Output */}
-            <div className="flex-1 overflow-y-auto mb-4 space-y-1">
-              {output.map((line, index) => (
-                <div key={index} className="animate-boot-text">
-                  {line}
-                </div>
-              ))}
-            </div>
-            
-            {/* Terminal Input Line */}
-            {!isBooting && (
-              <div className="flex items-center">
-                <span className="mr-2">ethos@terminal:~$</span>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleInputKeyDown}
-                  className="terminal-input flex-1 bg-transparent border-none text-current font-mono phosphor-glow outline-none"
-                  autoComplete="off"
-                  spellCheck="false"
-                  disabled={isBooting || isLoading}
-                />
-                <span className="animate-cursor-blink ml-1">█</span>
-              </div>
-            )}
-            
-            {/* Mobile Quick Actions */}
-            <div className="md:hidden mt-4 flex gap-2 flex-wrap">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="retro-button text-xs"
-                onClick={() => executeCommand('help')}
-              >
-                HELP
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="retro-button text-xs"
-                onClick={() => executeCommand('clear')}
-              >
-                CLEAR
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="retro-button text-xs"
-                onClick={() => executeCommand('history')}
-              >
-                HISTORY
-              </Button>
-            </div>
+          {/* Quick Commands */}
+          <div className="flex gap-2 mt-2 flex-wrap">
+            <button
+              className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+              onClick={() => executeCommand('help')}
+            >
+              Help
+            </button>
+            <button
+              className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+              onClick={() => executeCommand('clear')}
+            >
+              Clear
+            </button>
+            <button
+              className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+              onClick={() => executeCommand('xp of cookedzera')}
+            >
+              Example: XP
+            </button>
+            <button
+              className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors"
+              onClick={() => executeCommand('score of serpinxbt')}
+            >
+              Example: Score
+            </button>
           </div>
         </div>
       </div>

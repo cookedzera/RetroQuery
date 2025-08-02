@@ -3,55 +3,58 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0, 0%, 0%);
-  --foreground: hsl(43, 100%, 50%);
-  --muted: hsl(0, 0%, 10%);
-  --muted-foreground: hsl(43, 20%, 60%);
-  --popover: hsl(0, 0%, 5%);
-  --popover-foreground: hsl(43, 100%, 50%);
-  --card: hsl(0, 0%, 5%);
-  --card-foreground: hsl(43, 100%, 50%);
-  --border: hsl(43, 20%, 20%);
-  --input: hsl(0, 0%, 10%);
-  --primary: hsl(43, 100%, 50%);
-  --primary-foreground: hsl(0, 0%, 0%);
-  --secondary: hsl(0, 0%, 10%);
-  --secondary-foreground: hsl(43, 100%, 50%);
-  --accent: hsl(0, 0%, 10%);
-  --accent-foreground: hsl(43, 100%, 50%);
-  --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(43, 100%, 50%);
-  --radius: 0.5rem;
+  /* Modern Mac Terminal Colors */
+  --background: #1e1e1e;
+  --foreground: #f0f0f0;
+  --muted: #2d2d2d;
+  --muted-foreground: #8e8e93;
+  --popover: #2d2d2d;
+  --popover-foreground: #f0f0f0;
+  --card: #2d2d2d;
+  --card-foreground: #f0f0f0;
+  --border: #3a3a3c;
+  --input: #2d2d2d;
+  --primary: #007AFF;
+  --primary-foreground: #ffffff;
+  --secondary: #2d2d2d;
+  --secondary-foreground: #f0f0f0;
+  --accent: #007AFF;
+  --accent-foreground: #ffffff;
+  --destructive: #ff3b30;
+  --destructive-foreground: #ffffff;
+  --success: #30d158;
+  --ring: #007AFF;
+  --radius: 8px;
   
-  /* CRT Terminal Colors */
-  --amber-terminal: hsl(43, 100%, 50%);
-  --green-matrix: hsl(120, 100%, 63%);
-  --blue-ibm: hsl(200, 100%, 67%);
-  --green-apple: hsl(120, 100%, 63%);
-  --dark-apple: hsl(120, 100%, 3%);
+  /* Terminal specific colors */
+  --terminal-bg: #1e1e1e;
+  --terminal-text: #f0f0f0;
+  --terminal-accent: #007AFF;
+  --terminal-success: #30d158;
+  --terminal-data-box: #2d2d2d;
+  --terminal-border: #3a3a3c;
 }
 
 .dark {
-  --background: hsl(0, 0%, 0%);
-  --foreground: hsl(43, 100%, 50%);
-  --muted: hsl(0, 0%, 10%);
-  --muted-foreground: hsl(43, 20%, 60%);
-  --popover: hsl(0, 0%, 5%);
-  --popover-foreground: hsl(43, 100%, 50%);
-  --card: hsl(0, 0%, 5%);
-  --card-foreground: hsl(43, 100%, 50%);
-  --border: hsl(43, 20%, 20%);
-  --input: hsl(0, 0%, 10%);
-  --primary: hsl(43, 100%, 50%);
-  --primary-foreground: hsl(0, 0%, 0%);
-  --secondary: hsl(0, 0%, 10%);
-  --secondary-foreground: hsl(43, 100%, 50%);
-  --accent: hsl(0, 0%, 10%);
-  --accent-foreground: hsl(43, 100%, 50%);
-  --destructive: hsl(0, 62%, 31%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(43, 100%, 50%);
+  --background: #1e1e1e;
+  --foreground: #f0f0f0;
+  --muted: #2d2d2d;
+  --muted-foreground: #8e8e93;
+  --popover: #2d2d2d;
+  --popover-foreground: #f0f0f0;
+  --card: #2d2d2d;
+  --card-foreground: #f0f0f0;
+  --border: #3a3a3c;
+  --input: #2d2d2d;
+  --primary: #007AFF;
+  --primary-foreground: #ffffff;
+  --secondary: #2d2d2d;
+  --secondary-foreground: #f0f0f0;
+  --accent: #007AFF;
+  --accent-foreground: #ffffff;
+  --destructive: #ff3b30;
+  --destructive-foreground: #ffffff;
+  --ring: #007AFF;
 }
 
 @layer base {
@@ -60,71 +63,132 @@
   }
 
   body {
-    @apply font-mono antialiased bg-background text-foreground;
-    font-family: 'IBM Plex Mono', 'Courier New', monospace;
+    @apply antialiased;
+    background: var(--terminal-bg);
+    color: var(--terminal-text);
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
   }
 }
 
-/* CRT Terminal Styles */
-.crt-monitor {
-  background: linear-gradient(135deg, hsl(0, 0%, 10%) 0%, hsl(0, 0%, 18%) 100%);
-  border-radius: 25px;
+/* Modern Mac Terminal Styles */
+.terminal-window {
+  background: var(--terminal-bg);
+  border-radius: var(--radius);
   box-shadow: 
-    inset 0 0 30px hsla(0, 0%, 0%, 0.8),
-    0 0 50px hsla(0, 0%, 0%, 0.9),
-    0 20px 40px hsla(0, 0%, 0%, 0.6);
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(20px);
 }
 
-.crt-screen {
-  background: hsl(0, 0%, 0%);
-  border-radius: 15px;
-  position: relative;
-  overflow: hidden;
-  transform: perspective(800px) rotateX(2deg);
+.terminal-titlebar {
+  background: linear-gradient(180deg, #3c3c3c 0%, #2d2d2d 100%);
+  border-bottom: 1px solid var(--terminal-border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-control.close { background: #ff5f57; }
+.terminal-control.minimize { background: #ffbd2e; }
+.terminal-control.maximize { background: #28ca42; }
+
+.terminal-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--terminal-text);
+  opacity: 0.8;
 }
 
 .terminal-content {
-  letter-spacing: 0.5px;
-  line-height: 1.4;
-  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.025em;
+  padding: 20px;
 }
 
-.phosphor-glow {
-  text-shadow: 
-    0 0 5px currentColor,
-    0 0 10px currentColor,
-    0 0 15px currentColor;
+.data-box {
+  background: var(--terminal-data-box);
+  border: 1px solid var(--terminal-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 0;
+  position: relative;
 }
 
-.scanlines {
+.data-box::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    hsla(0, 0%, 100%, 0.03) 2px,
-    hsla(0, 0%, 100%, 0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 10;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 122, 255, 0.3), transparent);
 }
 
-.scanline-animation {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, hsla(0, 0%, 100%, 0.1), transparent);
-  z-index: 15;
-  pointer-events: none;
-  animation: scanline 0.1s linear infinite;
+.prompt {
+  color: var(--terminal-accent);
+  font-weight: 500;
+}
+
+.success-text {
+  color: var(--terminal-success);
+}
+
+.accent-text {
+  color: var(--terminal-accent);
+}
+
+/* Add smooth scrolling */
+.terminal-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--terminal-border) transparent;
+}
+
+.terminal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-content::-webkit-scrollbar-thumb {
+  background: var(--terminal-border);
+  border-radius: 3px;
+}
+
+.terminal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--terminal-accent);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-boot-text {
+  animation: fadeIn 0.2s ease-out;
 }
 
 .screen-curve {

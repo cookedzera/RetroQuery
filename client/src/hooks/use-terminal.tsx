@@ -175,42 +175,47 @@ export function useTerminal() {
 
       // Display results based on intent
       if (intent === 'user_profile') {
-        addOutput('═══ USER PROFILE ═══');
+        // User Profile with modern styling
+        addOutput('┌─ User Profile ─────────────────────────────────────┐');
         if (apiResult.isRealData) {
-          addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+          addOutput('│ ✓ Live data from Ethos Network API                │');
         }
-        addOutput(`USER: ${data.address || 'Unknown'}`);
-        addOutput(`CREDIBILITY SCORE: ${data.score?.toLocaleString() || 0} ⭐`);
-        addOutput(`REVIEWS RECEIVED: ${data.reviewCount || 0} 📝`);
-        addOutput(`VOUCHES RECEIVED: ${data.vouchCount || 0} 🤝`);
+        addOutput('├─────────────────────────────────────────────────────┤');
+        addOutput(`│ Address: ${(data.address || 'Unknown').padEnd(38)} │`);
+        addOutput(`│ Credibility Score: ${String(data.score?.toLocaleString() || 0).padEnd(30)} │`);
+        addOutput(`│ Reviews Received: ${String(data.reviewCount || 0).padEnd(31)} │`);
+        addOutput(`│ Vouches Received: ${String(data.vouchCount || 0).padEnd(31)} │`);
         if (data.credibility?.rank > 0) {
-          addOutput(`RANK: #${data.credibility.rank}`);
+          addOutput(`│ Rank: #${String(data.credibility.rank).padEnd(39)} │`);
         }
+        addOutput('└─────────────────────────────────────────────────────┘');
         addOutput('');
         
       } else if (intent === 'user_stats') {
         // Show specific metric or all stats based on request
         if (specificMetric && specificMetric !== 'all') {
-          addOutput(`═══ ${specificMetric.toUpperCase()} DATA ═══`);
-          if (apiResult.isRealData) {
-            addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
-          }
-          
           switch (specificMetric) {
             case 'xp':
-              // Show appropriate XP based on timeframe query
+              // XP Data with modern styling
+              addOutput('┌─ XP Data ──────────────────────────────────────────┐');
+              if (apiResult.isRealData) {
+                addOutput('│ ✓ Live data from Ethos Network API                │');
+              }
+              addOutput('├─────────────────────────────────────────────────────┤');
               if (data.timeframe && data.timeframe !== 'all') {
-                // For timeframe queries, show timeframe-specific XP (0 for now since API doesn't provide this)
-                addOutput(`${data.timeframe.toUpperCase()} XP: ${data.timeframeXP || 0} ⚡`);
-                addOutput(`(Note: Ethos API doesn't provide timeframe-specific XP data)`);
-                addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
+                const timeframeName = data.timeframe.charAt(0).toUpperCase() + data.timeframe.slice(1);
+                addOutput(`│ ${timeframeName} XP: ${String(data.timeframeXP || 0).padEnd(35)} │`);
+                addOutput('│ (Ethos API doesn\'t provide timeframe-specific data)│');
+                addOutput(`│ Total XP: ${String(data.totalXP?.toLocaleString() || 0).padEnd(37)} │`);
               } else {
-                // For general XP queries, show total XP
-                addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
+                addOutput(`│ Total XP: ${String(data.totalXP?.toLocaleString() || 0).padEnd(37)} │`);
               }
               if (data.timeframe) {
-                addOutput(`TIMEFRAME: ${data.timeframe.toUpperCase()}`);
+                const timeframeName = data.timeframe.charAt(0).toUpperCase() + data.timeframe.slice(1);
+                addOutput(`│ Timeframe: ${timeframeName.padEnd(36)} │`);
               }
+              addOutput('└─────────────────────────────────────────────────────┘');
+              addOutput('');
               break;
               
             case 'score':
