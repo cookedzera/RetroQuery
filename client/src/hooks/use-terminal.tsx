@@ -134,9 +134,9 @@ export function useTerminal() {
         
         addOutput('');
         
-        // If we have structured parameters, make additional API calls for real data
-        if (aiResponse.intent && aiResponse.parameters) {
-          await handleStructuredQuery(aiResponse);
+        // Display API results if available from the backend
+        if (result.apiResult) {
+          await displayApiResult(result.apiResult, result.extractedIntent);
         }
       } else {
         addOutput('ERROR: No response from AI service.');
@@ -150,98 +150,77 @@ export function useTerminal() {
     }
   }, [aiQueryMutation, addOutput]);
 
-  const handleStructuredQuery = useCallback(async (aiResponse: any) => {
-    // Execute dynamic API calls based on Groq's analysis
-    const { intent, parameters, api_action } = aiResponse;
-    
+  const displayApiResult = useCallback(async (apiResult: any, intent: string) => {
     try {
-      if (intent === 'xp_query' || intent === 'attestation_lookup' || intent === 'reputation_score') {
-        // Get user stats using real Ethos Network data
-        let userkey = 'address:0x9876543210fedcba9876543210fedcba98765432'; // default
-        
-        if (parameters.usernames?.[0]) {
-          userkey = parameters.usernames[0]; // Use username directly (no @ symbol)
-        } else if (parameters.addresses?.[0]) {
-          userkey = parameters.addresses[0];
-        }
-        
-        const period = parameters.timeframe || 'week';
-        
-        const stats = await EthosApi.getUserStats(userkey, period);
-        if (stats) {
-          addOutput('ETHOS NETWORK DATA RETRIEVED:');
-          if (stats.isRealData) {
-            addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
-            addOutput(`CREDIBILITY SCORE: ${stats.score || stats.reputation || 0}`);
-            addOutput(`PERIOD ACTIVITY: ${stats.periodScore || stats.periodXp || 0}`);
-            addOutput(`REVIEWS: ${stats.reviews || stats.reviewCount || 0}`);
-            addOutput(`VOUCHES: ${stats.vouches || stats.vouchCount || 0}`);
-            addOutput(`RANK: #${stats.rank || 0}`);
-            if (stats.percentile) addOutput(`PERCENTILE: ${stats.percentile}%`);
-          } else {
-            addOutput('⚠ USING MOCK DATA (DEVELOPMENT MODE)');
-            addOutput(`XP: ${stats.xp?.toLocaleString() || 0}`);
-            addOutput(`PERIOD XP: ${stats.periodXp || 0}`);
-            addOutput(`REPUTATION: ${stats.reputation || 0}`);
-            addOutput(`RANK: #${stats.rank || 0}`);
-          }
-          addOutput('');
-        }
-      } else if (intent === 'user_comparison' && parameters.usernames?.length > 0) {
-        // Compare users with real Ethos data
-        const username = parameters.usernames[0];
-        const user = await EthosApi.searchUser(username);
-        if (user) {
-          if (Array.isArray(user)) {
-            const profile = user[0];
-            addOutput(`FOUND USER: ${profile.username || profile.address}`);
-            addOutput(`SCORE: ${profile.score?.toLocaleString() || 0}`);
-            addOutput(`REPUTATION: ${profile.reputation || 0}`);
-            if (profile.isRealData) addOutput('⚡ LIVE ETHOS NETWORK DATA');
-          } else {
-            addOutput(`FOUND USER: ${user.username || user.address}`);
-            addOutput(`SCORE: ${user.score?.toLocaleString() || user.xp?.toLocaleString() || 0}`);
-            addOutput(`REPUTATION: ${user.reputation || 0}`);
-            if (user.isRealData) addOutput('⚡ LIVE ETHOS NETWORK DATA');
-          }
-          addOutput('');
-        }
-      } else if (intent === 'leaderboard') {
-        // Get leaderboard with real Ethos data
-        const leaderboard = await EthosApi.getLeaderboard(10, parameters.metric || 'score');
-        if (leaderboard) {
-          addOutput('ETHOS NETWORK LEADERBOARD:');
-          if (leaderboard.length > 0 && leaderboard[0].isRealData) {
-            addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
-          }
-          leaderboard.slice(0, 5).forEach((user: any, index: number) => {
-            const emoji = index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : '⭐';
-            const displayName = user.username || user.address?.slice(0, 10) + '...';
-            const score = user.score || user.xp || 0;
-            addOutput(`${index + 1}. ${emoji} ${displayName} - ${score.toLocaleString()} SCORE`);
-          });
-          addOutput('');
-        }
-      } else if (intent === 'attestation_lookup') {
-        // Get user reviews/attestations
-        const userkey = parameters.addresses?.[0] || parameters.usernames?.[0] || 'address:0x9876543210fedcba9876543210fedcba98765432';
-        const reviews = await EthosApi.getUserReviews(userkey);
-        if (reviews && reviews.length > 0) {
-          addOutput('USER REVIEWS RETRIEVED:');
-          if (reviews[0].isRealData) {
-            addOutput('⚡ LIVE ETHOS NETWORK REVIEWS');
-          }
-          reviews.slice(0, 5).forEach((review: any, index: number) => {
-            const reviewer = review.attesterUsername || review.fromAddress?.slice(0, 10) + '...';
-            addOutput(`${index + 1}. ${reviewer} - Score: ${review.score}`);
-            if (review.comment) addOutput(`   "${review.comment}"`);
-          });
-          addOutput('');
-        }
+      if (!apiResult.success) {
+        addOutput(`ERROR: ${apiResult.message || 'API call failed'}`);
+        addOutput('');
+        return;
       }
+
+      const data = apiResult.data;
+      if (!data) {
+        addOutput('No data available.');
+        addOutput('');
+        return;
+      }
+
+      // Display results based on intent
+      if (intent === 'user_profile') {
+        addOutput('═══ USER PROFILE ═══');
+        if (apiResult.isRealData) {
+          addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+        }
+        addOutput(`USER: ${data.address || 'Unknown'}`);
+        addOutput(`CREDIBILITY SCORE: ${data.score?.toLocaleString() || 0} ⭐`);
+        addOutput(`REVIEWS RECEIVED: ${data.reviewCount || 0} 📝`);
+        addOutput(`VOUCHES RECEIVED: ${data.vouchCount || 0} 🤝`);
+        if (data.credibility?.rank > 0) {
+          addOutput(`RANK: #${data.credibility.rank}`);
+        }
+        addOutput('');
+        
+      } else if (intent === 'user_stats') {
+        addOutput('═══ USER STATISTICS ═══');
+        if (apiResult.isRealData) {
+          addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+        }
+        if (data.totalXP) {
+          addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
+        }
+        addOutput(`CREDIBILITY SCORE: ${data.score?.toLocaleString() || 0} ⭐`);
+        addOutput(`REVIEWS: ${data.reviewCount || 0} 📝`);
+        addOutput(`VOUCHES: ${data.vouchCount || 0} 🤝`);
+        if (data.timeframe) {
+          addOutput(`TIMEFRAME: ${data.timeframe.toUpperCase()}`);
+        }
+        addOutput('');
+        
+      } else {
+        // Generic display for other data types
+        addOutput('═══ DATA RETRIEVED ═══');
+        if (apiResult.isRealData) {
+          addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+        }
+        addOutput(`RESULT: ${JSON.stringify(data, null, 2)}`);
+        addOutput('');
+      }
+      
+    } catch (error) {
+      console.error('Display error:', error);
+      addOutput('ERROR: Failed to display results.');
+      addOutput('');
+    }
+  }, [addOutput]);
+
+  const handleStructuredQuery = useCallback(async (aiResponse: any) => {
+    // This function is deprecated - API results come directly from backend now
+    // Just show a simple processing message
+    try {
+      addOutput('Processing with real-time API integration...');
+      addOutput('');
     } catch (error) {
       console.error('Structured query error:', error);
-      // Don't show error to user, the AI response is sufficient
     }
   }, [addOutput]);
 
