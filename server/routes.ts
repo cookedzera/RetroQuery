@@ -14,7 +14,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { query, sessionId } = terminalQuerySchema.parse(req.body);
       
-      const groqApiKey = process.env.GROQ_API_KEY;
+      const groqApiKey = process.env.GROQ_API_KEY || "REMOVED_API_KEY";
       
       if (!groqApiKey) {
         // Fallback to mock AI response when no API key is available
