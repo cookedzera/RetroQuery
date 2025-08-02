@@ -136,7 +136,7 @@ export function useTerminal() {
         
         // Display API results if available from the backend
         if (result.apiResult) {
-          await displayApiResult(result.apiResult, result.extractedIntent);
+          await displayApiResult(result.apiResult, result.extractedIntent, aiResponse.parameters?.metric);
         }
       } else {
         addOutput('ERROR: No response from AI service.');
@@ -150,7 +150,7 @@ export function useTerminal() {
     }
   }, [aiQueryMutation, addOutput]);
 
-  const displayApiResult = useCallback(async (apiResult: any, intent: string) => {
+  const displayApiResult = useCallback(async (apiResult: any, intent: string, specificMetric?: string) => {
     try {
       if (!apiResult.success) {
         addOutput(`ERROR: ${apiResult.message || 'API call failed'}`);
@@ -181,18 +181,66 @@ export function useTerminal() {
         addOutput('');
         
       } else if (intent === 'user_stats') {
-        addOutput('═══ USER STATISTICS ═══');
-        if (apiResult.isRealData) {
-          addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
-        }
-        if (data.totalXP) {
-          addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
-        }
-        addOutput(`CREDIBILITY SCORE: ${data.score?.toLocaleString() || 0} ⭐`);
-        addOutput(`REVIEWS: ${data.reviewCount || 0} 📝`);
-        addOutput(`VOUCHES: ${data.vouchCount || 0} 🤝`);
-        if (data.timeframe) {
-          addOutput(`TIMEFRAME: ${data.timeframe.toUpperCase()}`);
+        // Show specific metric or all stats based on request
+        if (specificMetric && specificMetric !== 'all') {
+          addOutput(`═══ ${specificMetric.toUpperCase()} DATA ═══`);
+          if (apiResult.isRealData) {
+            addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+          }
+          
+          switch (specificMetric) {
+            case 'xp':
+              if (data.totalXP) {
+                addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
+              } else {
+                addOutput(`XP: ${data.score?.toLocaleString() || 0} ⚡`);
+              }
+              if (data.timeframe) {
+                addOutput(`TIMEFRAME: ${data.timeframe.toUpperCase()}`);
+              }
+              break;
+              
+            case 'score':
+              addOutput(`CREDIBILITY SCORE: ${data.score?.toLocaleString() || 0} ⭐`);
+              break;
+              
+            case 'reviews':
+              addOutput(`REVIEWS RECEIVED: ${data.reviewCount || 0} 📝`);
+              break;
+              
+            case 'vouches':
+              addOutput(`VOUCHES RECEIVED: ${data.vouchCount || 0} 🤝`);
+              break;
+              
+            case 'rank':
+              if (data.credibility?.rank > 0) {
+                addOutput(`RANK: #${data.credibility.rank} 🏆`);
+                if (data.credibility.percentile) {
+                  addOutput(`PERCENTILE: ${data.credibility.percentile}%`);
+                }
+              } else {
+                addOutput('RANK: Not available');
+              }
+              break;
+              
+            default:
+              addOutput(`${specificMetric.toUpperCase()}: Data not available`);
+          }
+        } else {
+          // Show all stats when no specific metric requested
+          addOutput('═══ USER STATISTICS ═══');
+          if (apiResult.isRealData) {
+            addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+          }
+          if (data.totalXP) {
+            addOutput(`TOTAL XP: ${data.totalXP?.toLocaleString() || 0} ⚡`);
+          }
+          addOutput(`CREDIBILITY SCORE: ${data.score?.toLocaleString() || 0} ⭐`);
+          addOutput(`REVIEWS: ${data.reviewCount || 0} 📝`);
+          addOutput(`VOUCHES: ${data.vouchCount || 0} 🤝`);
+          if (data.timeframe) {
+            addOutput(`TIMEFRAME: ${data.timeframe.toUpperCase()}`);
+          }
         }
         addOutput('');
         

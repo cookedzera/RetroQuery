@@ -40,20 +40,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               Parse natural language queries about Web3 reputation data and extract structured information.
 
               QUERY ANALYSIS EXAMPLES:
-              Query: "show me user profile for cookedzera" → intent: "user_profile", userkey: "cookedzera"
-              Query: "xp of @cookedzera this week" → intent: "user_stats", userkey: "cookedzera", timeframe: "week"
+              Query: "show me user profile for cookedzera" → intent: "user_profile", userkey: "cookedzera", metric: "all"
+              Query: "xp of @cookedzera this week" → intent: "user_stats", userkey: "cookedzera", timeframe: "week", metric: "xp"
               Query: "what are the top 5 users by reputation" → intent: "leaderboard", limit: "5", metric: "reputation"
               Query: "compare vitalik with cookedzera" → intent: "user_comparison", userkeys: ["vitalik", "cookedzera"]
-              Query: "what is vitalik reputation score" → intent: "user_profile", userkey: "vitalik"
+              Query: "what is vitalik reputation score" → intent: "user_stats", userkey: "vitalik", metric: "score"
+              Query: "what is cookedzera score?" → intent: "user_stats", userkey: "cookedzera", metric: "score"
               Query: "show cookedzera reviews" → intent: "user_reviews", userkey: "cookedzera"
               Query: "search for alice" → intent: "search_users", query: "alice"
+              Query: "how many vouches does cookedzera have?" → intent: "user_stats", userkey: "cookedzera", metric: "vouches"
 
               PARSING RULES:
               - Extract usernames from @username format (remove @) OR direct mentions like "cookedzera", "vitalik"
               - Detect numbers for limits: "top 5" → limit: "5"
               - Identify comparison words: "compare X with Y" → user_comparison with userkeys: [X, Y]
-              - Recognize profile requests: "profile", "show me", "user" → user_profile
+              - Recognize profile requests: "profile", "show me", "user" → user_profile with metric: "all"
               - Detect stats/activity: "xp", "stats", "activity" + timeframe → user_stats
+              - CRITICAL: Extract specific metrics:
+                * "XP" or "experience" → metric: "xp"
+                * "score" or "credibility" → metric: "score"  
+                * "reviews" → metric: "reviews"
+                * "vouches" → metric: "vouches"
+                * "rank" → metric: "rank"
+                * General profile → metric: "all"
 
               RESPOND WITH VALID JSON - NO NESTED JSON OR ESCAPING:
               {
@@ -62,11 +71,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   "userkey": "cookedzera",
                   "userkeys": ["vitalik", "cookedzera"],
                   "timeframe": "week",
-                  "metric": "reputation",
+                  "metric": "xp|score|reviews|vouches|rank|all",
                   "query": "alice",
                   "limit": "5"
                 },
-                "natural_response": "SCANNING USER DATABASE...\n├─ USER PROFILE RETRIEVED\n└─ COOKEDZERA ANALYSIS COMPLETE"
+                "natural_response": "SCANNING USER DATABASE...\n├─ XP DATA RETRIEVED\n└─ COOKEDZERA ANALYSIS COMPLETE"
               }
 
               RESPONSE STYLE REQUIREMENTS:
