@@ -393,6 +393,265 @@ export class EthosNetworkClient {
       return 0;
     }
   }
+
+  // New comprehensive activity and history methods
+  async getUserActivities(userkey: string, direction: string = 'subject', activityType?: string, limit: number = 50): Promise<any[]> {
+    try {
+      const params = new URLSearchParams({
+        userkey,
+        direction,
+        limit: limit.toString()
+      });
+      
+      if (activityType) {
+        params.append('activityType', activityType);
+      }
+      
+      const activities = await this.request(`/activities/userkey?${params}`);
+      return activities || [];
+    } catch (error) {
+      console.error('Error fetching user activities:', error);
+      return [];
+    }
+  }
+
+  async getUserActivityHistory(userkey: string, timeframe: string = 'month', activityType?: string): Promise<{ activities: any[]; summary: any }> {
+    try {
+      const body: any = { userkey };
+      
+      if (activityType) {
+        body.filter = [activityType];
+      }
+      
+      // Calculate date range based on timeframe
+      const endDate = new Date();
+      const startDate = new Date();
+      switch (timeframe) {
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setMonth(endDate.getMonth() - 1);
+      }
+      
+      const activitiesGiven = await this.request('/activities/profile/given', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      
+      const activitiesReceived = await this.request('/activities/profile/received', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      
+      const allActivities = [
+        ...(activitiesGiven.values || []),
+        ...(activitiesReceived.values || [])
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      return {
+        activities: allActivities,
+        summary: {
+          timeframe,
+          totalActivities: allActivities.length,
+          given: activitiesGiven.values?.length || 0,
+          received: activitiesReceived.values?.length || 0
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching user activity history:', error);
+      return { activities: [], summary: { timeframe, totalActivities: 0, given: 0, received: 0 } };
+    }
+  }
+
+  async getActivityFeed(filter?: string[], limit: number = 50, dayRange?: number): Promise<{ activities: any[]; total: number }> {
+    try {
+      const body: any = { limit };
+      
+      if (filter) {
+        body.filter = filter;
+      }
+      
+      if (dayRange) {
+        body.dayRange = dayRange;
+      }
+      
+      const feed = await this.request('/activities/feed', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      
+      return {
+        activities: feed.values || [],
+        total: feed.total || 0
+      };
+    } catch (error) {
+      console.error('Error fetching activity feed:', error);
+      return { activities: [], total: 0 };
+    }
+  }
+
+  async getActivityDetails(activityType: string, id: number): Promise<any> {
+    try {
+      return await this.request(`/activities/${activityType}/${id}`);
+    } catch (error) {
+      console.error('Error fetching activity details:', error);
+      return null;
+    }
+  }
+
+  async getVotesForActivity(activityType: string, activityId: number): Promise<any[]> {
+    try {
+      const params = new URLSearchParams({
+        type: activityType,
+        activityId: activityId.toString()
+      });
+      
+      const voteData = await this.request(`/votes?${params}`);
+      return voteData.values || [];
+    } catch (error) {
+      console.error('Error fetching votes for activity:', error);
+      return [];
+    }
+  }
+
+  async getReviewBetweenUsers(authorUserKey: string, subjectUserKey: string): Promise<any> {
+    try {
+      const params = new URLSearchParams({
+        authorUserKey,
+        subjectUserKey
+      });
+      
+      return await this.request(`/reviews/latest/between?${params}`);
+    } catch (error) {
+      console.error('Error fetching review between users:', error);
+      return null;
+    }
+  }
+
+  async getUserNetworks(userkey: string): Promise<{ [network: string]: any }> {
+    try {
+      // First get the full user profile to see all connected networks
+      const profiles = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (!profiles || profiles.length === 0) {
+        return {};
+      }
+      
+      const profile = profiles[0];
+      const networks: { [network: string]: any } = {};
+      
+      // Extract network information from userkeys
+      if (profile.userkeys) {
+        profile.userkeys.forEach((userkey: string) => {
+          if (userkey.startsWith('service:x.com:')) {
+            networks.twitter = { userkey, connected: true };
+          } else if (userkey.startsWith('service:farcaster:')) {
+            networks.farcaster = { userkey, connected: true };
+          } else if (userkey.startsWith('service:discord:')) {
+            networks.discord = { userkey, connected: true };
+          } else if (userkey.startsWith('service:telegram:')) {
+            networks.telegram = { userkey, connected: true };
+          } else if (userkey.startsWith('address:')) {
+            networks.ethereum = { userkey, connected: true };
+          }
+        });
+      }
+      
+      return networks;
+    } catch (error) {
+      console.error('Error fetching user networks:', error);
+      return {};
+    }
+  }
+
+  async getReputationTrends(userkey: string, timeframe: string = 'month'): Promise<{ dataPoints: any[]; summary: any }> {
+    try {
+      // Get user activities for the timeframe to calculate trends
+      const history = await this.getUserActivityHistory(userkey, timeframe);
+      
+      const dataPoints: any[] = [];
+      const summary = {
+        timeframe,
+        totalActivities: history.activities.length,
+        scoreChange: 0,
+        reviewsReceived: 0,
+        vouchesReceived: 0
+      };
+      
+      // Group activities by day/week based on timeframe
+      const groupedActivities = this.groupActivitiesByTime(history.activities, timeframe);
+      
+      Object.entries(groupedActivities).forEach(([date, activities]) => {
+        const scoreChange = activities.reduce((sum: number, activity: any) => {
+          if (activity.activityType === 'review' || activity.activityType === 'vouch') {
+            return sum + (activity.score || 0);
+          }
+          return sum;
+        }, 0);
+        
+        dataPoints.push({
+          date,
+          scoreChange,
+          activityCount: activities.length,
+          activities
+        });
+      });
+      
+      // Calculate summary statistics
+      summary.reviewsReceived = history.activities.filter(a => a.activityType === 'review').length;
+      summary.vouchesReceived = history.activities.filter(a => a.activityType === 'vouch').length;
+      summary.scoreChange = dataPoints.reduce((sum, point) => sum + point.scoreChange, 0);
+      
+      return { dataPoints, summary };
+    } catch (error) {
+      console.error('Error fetching reputation trends:', error);
+      return { dataPoints: [], summary: { timeframe, totalActivities: 0, scoreChange: 0, reviewsReceived: 0, vouchesReceived: 0 } };
+    }
+  }
+
+  private groupActivitiesByTime(activities: any[], timeframe: string): { [key: string]: any[] } {
+    const grouped: { [key: string]: any[] } = {};
+    
+    activities.forEach(activity => {
+      if (!activity.timestamp) return;
+      
+      const date = new Date(activity.timestamp);
+      let key: string;
+      
+      switch (timeframe) {
+        case 'week':
+          key = date.toISOString().split('T')[0]; // Daily grouping for week view
+          break;
+        case 'month':
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay());
+          key = weekStart.toISOString().split('T')[0]; // Weekly grouping for month view
+          break;
+        case 'year':
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // Monthly grouping for year view
+          break;
+        default:
+          key = date.toISOString().split('T')[0];
+      }
+      
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(activity);
+    });
+    
+    return grouped;
+  }
 }
 
 export const ethosClient = new EthosNetworkClient();

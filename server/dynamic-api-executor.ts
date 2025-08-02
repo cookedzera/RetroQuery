@@ -37,6 +37,30 @@ export class DynamicAPIExecutor {
           
         case 'search_users':
           return await this.searchUsers(parameters.query);
+
+        case 'user_activities':
+          return await this.getUserActivities(parameters.userkey, parameters.direction, parameters.activityType, parameters.limit);
+
+        case 'user_activity_history':
+          return await this.getUserActivityHistory(parameters.userkey, parameters.timeframe, parameters.activityType);
+
+        case 'activity_feed':
+          return await this.getActivityFeed(parameters.filter, parameters.limit, parameters.dayRange);
+
+        case 'activity_details':
+          return await this.getActivityDetails(parameters.activityType, parameters.id);
+
+        case 'user_votes':
+          return await this.getUserVotes(parameters.userkey, parameters.activityType, parameters.activityId);
+
+        case 'review_details':
+          return await this.getReviewDetails(parameters.authorUserKey, parameters.subjectUserKey);
+
+        case 'user_networks':
+          return await this.getUserNetworks(parameters.userkey);
+
+        case 'reputation_trends':
+          return await this.getReputationTrends(parameters.userkey, parameters.timeframe);
           
         default:
           return {
@@ -224,6 +248,170 @@ export class DynamicAPIExecutor {
     };
   }
   
+  // New comprehensive activity and history methods
+  private static async getUserActivities(userkey: string, direction: string = 'subject', activityType?: string, limit: number = 50): Promise<APIExecutionResult> {
+    if (!userkey) {
+      return {
+        success: false,
+        data: null,
+        message: "User identifier required",
+        isRealData: false
+      };
+    }
+    
+    const activities = await ethosClient.getUserActivities(userkey, direction, activityType, limit);
+    
+    return {
+      success: activities.length > 0,
+      data: {
+        activities,
+        userkey,
+        direction,
+        activityType: activityType || 'all',
+        total: activities.length
+      },
+      message: `Retrieved ${activities.length} activities for ${userkey}`,
+      isRealData: activities.length > 0
+    };
+  }
+
+  private static async getUserActivityHistory(userkey: string, timeframe: string = 'month', activityType?: string): Promise<APIExecutionResult> {
+    if (!userkey) {
+      return {
+        success: false,
+        data: null,
+        message: "User identifier required",
+        isRealData: false
+      };
+    }
+    
+    const history = await ethosClient.getUserActivityHistory(userkey, timeframe, activityType);
+    
+    return {
+      success: history.activities.length > 0,
+      data: history,
+      message: `Retrieved ${history.activities.length} activities from the last ${timeframe}`,
+      isRealData: history.activities.length > 0
+    };
+  }
+
+  private static async getActivityFeed(filter?: string[], limit: number = 50, dayRange?: number): Promise<APIExecutionResult> {
+    const feed = await ethosClient.getActivityFeed(filter, limit, dayRange);
+    
+    return {
+      success: feed.activities.length > 0,
+      data: feed,
+      message: `Retrieved ${feed.activities.length} activities from feed`,
+      isRealData: feed.activities.length > 0
+    };
+  }
+
+  private static async getActivityDetails(activityType: string, id: number): Promise<APIExecutionResult> {
+    if (!activityType || !id) {
+      return {
+        success: false,
+        data: null,
+        message: "Activity type and ID required",
+        isRealData: false
+      };
+    }
+    
+    const activity = await ethosClient.getActivityDetails(activityType, id);
+    
+    return {
+      success: !!activity,
+      data: activity,
+      message: activity ? "Activity details retrieved" : "Activity not found",
+      isRealData: !!activity
+    };
+  }
+
+  private static async getUserVotes(userkey: string, activityType: string, activityId: number): Promise<APIExecutionResult> {
+    if (!userkey || !activityType || !activityId) {
+      return {
+        success: false,
+        data: null,
+        message: "User, activity type, and activity ID required",
+        isRealData: false
+      };
+    }
+    
+    const votes = await ethosClient.getVotesForActivity(activityType, activityId);
+    
+    return {
+      success: votes.length > 0,
+      data: {
+        votes,
+        userkey,
+        activityType,
+        activityId,
+        total: votes.length
+      },
+      message: `Retrieved ${votes.length} votes for activity`,
+      isRealData: votes.length > 0
+    };
+  }
+
+  private static async getReviewDetails(authorUserKey: string, subjectUserKey: string): Promise<APIExecutionResult> {
+    if (!authorUserKey || !subjectUserKey) {
+      return {
+        success: false,
+        data: null,
+        message: "Author and subject user keys required",
+        isRealData: false
+      };
+    }
+    
+    const review = await ethosClient.getReviewBetweenUsers(authorUserKey, subjectUserKey);
+    
+    return {
+      success: !!review,
+      data: review,
+      message: review ? "Review details retrieved" : "No review found between users",
+      isRealData: !!review
+    };
+  }
+
+  private static async getUserNetworks(userkey: string): Promise<APIExecutionResult> {
+    if (!userkey) {
+      return {
+        success: false,
+        data: null,
+        message: "User identifier required",
+        isRealData: false
+      };
+    }
+    
+    const networks = await ethosClient.getUserNetworks(userkey);
+    
+    return {
+      success: Object.keys(networks).length > 0,
+      data: networks,
+      message: `Retrieved network connections for ${userkey}`,
+      isRealData: Object.keys(networks).length > 0
+    };
+  }
+
+  private static async getReputationTrends(userkey: string, timeframe: string = 'month'): Promise<APIExecutionResult> {
+    if (!userkey) {
+      return {
+        success: false,
+        data: null,
+        message: "User identifier required",
+        isRealData: false
+      };
+    }
+    
+    const trends = await ethosClient.getReputationTrends(userkey, timeframe);
+    
+    return {
+      success: trends.dataPoints.length > 0,
+      data: trends,
+      message: `Retrieved reputation trends for the last ${timeframe}`,
+      isRealData: trends.dataPoints.length > 0
+    };
+  }
+
   private static async searchUsers(query: string): Promise<APIExecutionResult> {
     if (!query) {
       return {

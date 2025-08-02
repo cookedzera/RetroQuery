@@ -69,6 +69,18 @@ Preferred communication style: Simple, everyday language.
 - **✅ FIXED Verbose Responses**: Modified Groq AI system prompt to generate concise responses instead of theatrical multi-line outputs
 - **✅ API Key Integration**: Embedded Groq API key directly in code to resolve environment variable issues
 - **✅ FIXED XP Data Display**: Clarified timeframe vs total XP distinction - weekly queries now show both timeframe-specific (0) and total XP with clear labels
+- **✅ COMPREHENSIVE FEATURE ENHANCEMENT**: Added complete Ethos Network API v2 coverage with 8 new intent types:
+  - **user_activities**: Get all user activities (reviews, vouches, slashes, votes, projects) with direction filtering
+  - **user_activity_history**: Historical activity analysis with trends over custom timeframes
+  - **activity_feed**: Global activity feed with advanced filtering options
+  - **activity_details**: Specific activity information lookup
+  - **user_votes**: Voting behavior and patterns analysis
+  - **review_details**: Specific review data between users
+  - **user_networks**: All connected social platforms (Twitter, Farcaster, Discord, Telegram)
+  - **reputation_trends**: Reputation change analysis over time periods
+- **✅ ENHANCED GROQ AI**: Updated system prompt with comprehensive API knowledge covering all activity types
+- **✅ ACTIVITY DISPLAY SYSTEM**: Added rich formatted displays for all new data types with structured layouts
+- **✅ HISTORICAL ANALYSIS**: Time-based activity grouping and trend calculation for reputation analytics
 
 ### Terminal Interface Features
 - **Retro CRT Aesthetics**: Multiple color themes with scanline effects and screen glow

@@ -264,13 +264,200 @@ export function useTerminal() {
         }
         addOutput('');
         
+      } else if (intent === 'user_activities') {
+        // User Activities Display
+        addOutput('┌─ User Activities ─────────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live activity data from Ethos Network API       │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.activities && data.activities.length > 0) {
+          addOutput(`│ Found ${data.activities.length} activities (${data.direction || 'all'}) │`);
+          addOutput('├─────────────────────────────────────────────────────┤');
+          data.activities.slice(0, 5).forEach((activity: any, index: number) => {
+            const type = activity.activityType || activity.type || 'activity';
+            const date = activity.timestamp ? new Date(activity.timestamp).toLocaleDateString() : 'unknown';
+            addOutput(`│ ${index + 1}. ${type.toUpperCase()} - ${date.padEnd(30)} │`);
+          });
+          if (data.activities.length > 5) {
+            addOutput(`│ ... and ${data.activities.length - 5} more activities │`);
+          }
+        } else {
+          addOutput('│ No activities found for this user                  │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'user_activity_history') {
+        // Activity History with Trends
+        addOutput('┌─ Activity History & Trends ──────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live historical data from Ethos Network API     │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.summary) {
+          addOutput(`│ Timeframe: ${(data.summary.timeframe || 'unknown').toUpperCase().padEnd(38)} │`);
+          addOutput(`│ Total Activities: ${String(data.summary.totalActivities || 0).padEnd(31)} │`);
+          addOutput(`│ Given: ${String(data.summary.given || 0).padEnd(41)} │`);
+          addOutput(`│ Received: ${String(data.summary.received || 0).padEnd(37)} │`);
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'activity_feed') {
+        // Global Activity Feed
+        addOutput('┌─ Global Activity Feed ────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live feed from Ethos Network API                │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.activities && data.activities.length > 0) {
+          addOutput(`│ Showing latest ${data.activities.length} activities │`);
+          addOutput('├─────────────────────────────────────────────────────┤');
+          data.activities.slice(0, 10).forEach((activity: any, index: number) => {
+            const type = activity.activityType || activity.type || 'activity';
+            const author = activity.author?.username || activity.authorAddress || 'unknown';
+            addOutput(`│ ${(index + 1).toString().padStart(2)}. ${type.toUpperCase()} by ${author.slice(0, 20)} │`);
+          });
+        } else {
+          addOutput('│ No recent activities found                         │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'user_networks') {
+        // Social Networks Display
+        addOutput('┌─ Connected Social Networks ──────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live network data from Ethos Network API        │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        const networks = Object.keys(data);
+        if (networks.length > 0) {
+          networks.forEach(network => {
+            const status = data[network].connected ? '✓' : '✗';
+            addOutput(`│ ${status} ${network.toUpperCase().padEnd(45)} │`);
+          });
+        } else {
+          addOutput('│ No connected networks found                        │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'reputation_trends') {
+        // Reputation Trends Analysis
+        addOutput('┌─ Reputation Trends ───────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live trend analysis from Ethos Network API      │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.summary) {
+          addOutput(`│ Timeframe: ${(data.summary.timeframe || 'unknown').toUpperCase().padEnd(38)} │`);
+          addOutput(`│ Score Change: ${String(data.summary.scoreChange || 0).padEnd(33)} │`);
+          addOutput(`│ Reviews Received: ${String(data.summary.reviewsReceived || 0).padEnd(29)} │`);
+          addOutput(`│ Vouches Received: ${String(data.summary.vouchesReceived || 0).padEnd(29)} │`);
+        }
+        if (data.dataPoints && data.dataPoints.length > 0) {
+          addOutput('├─────────────────────────────────────────────────────┤');
+          addOutput('│ Recent Trend Points:                               │');
+          data.dataPoints.slice(0, 3).forEach((point: any) => {
+            const date = new Date(point.date).toLocaleDateString();
+            const change = point.scoreChange > 0 ? `+${point.scoreChange}` : point.scoreChange.toString();
+            addOutput(`│ ${date}: ${change} score, ${point.activityCount} activities │`);
+          });
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'user_votes') {
+        // Voting Patterns Display
+        addOutput('┌─ Voting Patterns ─────────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live voting data from Ethos Network API         │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.votes && data.votes.length > 0) {
+          const upvotes = data.votes.filter((v: any) => v.isUpvote).length;
+          const downvotes = data.votes.length - upvotes;
+          addOutput(`│ Total Votes: ${String(data.votes.length).padEnd(35)} │`);
+          addOutput(`│ Upvotes: ${String(upvotes).padEnd(39)} │`);
+          addOutput(`│ Downvotes: ${String(downvotes).padEnd(37)} │`);
+        } else {
+          addOutput('│ No voting data found                               │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'user_reviews') {
+        // Enhanced Reviews Display
+        addOutput('┌─ User Reviews ─────────────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live review data from Ethos Network API         │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.reviews && data.reviews.length > 0) {
+          addOutput(`│ Total Reviews: ${String(data.reviews.length).padEnd(33)} │`);
+          data.reviews.slice(0, 3).forEach((review: any, index: number) => {
+            const score = review.score || 0;
+            const scoreIcon = score > 0 ? '👍' : score < 0 ? '👎' : '➡️';
+            addOutput(`│ ${index + 1}. Score: ${score} ${scoreIcon} ${(review.comment || '').slice(0, 20)} │`);
+          });
+        } else {
+          addOutput('│ No reviews found                                   │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'leaderboard') {
+        // Enhanced Leaderboard Display
+        addOutput('┌─ Leaderboard ──────────────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live leaderboard from Ethos Network API         │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.leaderboard && data.leaderboard.length > 0) {
+          data.leaderboard.slice(0, 10).forEach((user: any, index: number) => {
+            const rank = index + 1;
+            const name = (user.username || user.address || 'unknown').slice(0, 20);
+            const score = user.score || 0;
+            addOutput(`│ ${rank.toString().padStart(2)}. ${name.padEnd(20)} ${score.toLocaleString().padStart(10)} │`);
+          });
+        } else {
+          addOutput('│ No leaderboard data available                      │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
+      } else if (intent === 'user_comparison') {
+        // Enhanced User Comparison
+        addOutput('┌─ User Comparison ──────────────────────────────────┐');
+        if (apiResult.isRealData) {
+          addOutput('│ ✓ Live comparison from Ethos Network API          │');
+        }
+        addOutput('├─────────────────────────────────────────────────────┤');
+        if (data.comparison && data.comparison.length >= 2) {
+          const user1 = data.comparison[0];
+          const user2 = data.comparison[1];
+          addOutput(`│ User 1: ${(user1.username || user1.address || 'unknown').padEnd(37)} │`);
+          addOutput(`│ Score: ${String(user1.score || 0).padEnd(41)} │`);
+          addOutput(`│ User 2: ${(user2.username || user2.address || 'unknown').padEnd(37)} │`);
+          addOutput(`│ Score: ${String(user2.score || 0).padEnd(41)} │`);
+        } else {
+          addOutput('│ Comparison data not available                      │');
+        }
+        addOutput('└─────────────────────────────────────────────────────┘');
+        addOutput('');
+
       } else {
         // Generic display for other data types
-        addOutput('═══ DATA RETRIEVED ═══');
+        addOutput('┌─ Data Retrieved ──────────────────────────────────┐');
         if (apiResult.isRealData) {
-          addOutput('⚡ LIVE DATA FROM ETHOS NETWORK API');
+          addOutput('│ ✓ Live data from Ethos Network API                │');
         }
-        addOutput(`RESULT: ${JSON.stringify(data, null, 2)}`);
+        addOutput('├─────────────────────────────────────────────────────┤');
+        addOutput('│ Raw data available - use specific commands for     │');
+        addOutput('│ better formatted display                           │');
+        addOutput('└─────────────────────────────────────────────────────┘');
         addOutput('');
       }
       
