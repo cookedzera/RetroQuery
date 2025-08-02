@@ -208,16 +208,11 @@ export function useTerminal() {
                 
                 // Show additional weekly details if available
                 if (data.weeklyDetails && data.timeframe === 'week') {
-                  addOutput(`│ Current Week: ${String(data.weeklyDetails.currentWeek).padEnd(33)} │`);
-                  addOutput(`│ Season Total: ${String(data.weeklyDetails.cumulativeSeasonXP?.toLocaleString() || 0).padEnd(33)} │`);
+                  addOutput(`│ This Week: ${String(data.weeklyDetails.weeklyXP?.toLocaleString() || 0).padEnd(35)} │`);
+                  addOutput(`│ Season Total: ${String(data.weeklyDetails.totalSeasonXP?.toLocaleString() || 0).padEnd(33)} │`);
                 }
                 
                 addOutput(`│ Total XP: ${String(data.totalXP?.toLocaleString() || 0).padEnd(37)} │`);
-                
-                // Show season info if available
-                if (data.currentSeason) {
-                  addOutput(`│ Season: ${String(data.currentSeason.name || `Season ${data.currentSeason.id}`).padEnd(39)} │`);
-                }
               } else {
                 addOutput(`│ Total XP: ${String(data.totalXP?.toLocaleString() || 0).padEnd(37)} │`);
               }

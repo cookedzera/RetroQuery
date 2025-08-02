@@ -103,16 +103,8 @@ export class DynamicAPIExecutor {
     let periodStart = new Date();
     let timeframeXP = 0;
     let weeklyDetails = null;
-    let currentSeason = null;
     
     try {
-      // Get current season and total XP
-      [currentSeason] = await Promise.all([
-        ethosClient.getCurrentSeason()
-      ]);
-      
-      // totalXP will be fetched later to avoid duplication
-      
       switch (timeframe) {
         case 'day':
           // Daily XP not supported by API - return 0
@@ -120,38 +112,26 @@ export class DynamicAPIExecutor {
           timeframeXP = 0;
           break;
         case 'week':
-          // Get real weekly XP from current season
-          if (currentSeason) {
-            const weeklyData = await ethosClient.getUserWeeklyXP(userkey, currentSeason.id);
-            if (weeklyData && weeklyData.length > 0) {
-              const currentWeekData = weeklyData[weeklyData.length - 1];
-              timeframeXP = currentWeekData.weeklyXp || 0;
-              weeklyDetails = {
-                currentWeek: currentSeason.week,
-                weeklyXP: currentWeekData.weeklyXp || 0,
-                cumulativeSeasonXP: currentWeekData.cumulativeXp || 0
-              };
-            }
+          // Get real weekly XP from current season (Season 1)
+          const weeklyData = await ethosClient.getUserWeeklyXP(userkey, 1);
+          if (weeklyData && weeklyData.length > 0) {
+            const currentWeekData = weeklyData[weeklyData.length - 1];
+            timeframeXP = currentWeekData.weeklyXp || 0;
+            weeklyDetails = {
+              weeklyXP: currentWeekData.weeklyXp || 0,
+              totalSeasonXP: currentWeekData.cumulativeXp || 0
+            };
           }
           periodStart.setDate(now.getDate() - 7);
           break;
         case 'month':
           // Aggregate last 4 weeks for monthly data
-          if (currentSeason) {
-            const weeklyData = await ethosClient.getUserWeeklyXP(userkey, currentSeason.id);
-            if (weeklyData && weeklyData.length >= 4) {
-              const last4Weeks = weeklyData.slice(-4);
-              timeframeXP = last4Weeks.reduce((sum, week) => sum + (week.weeklyXp || 0), 0);
-            }
+          const monthlyData = await ethosClient.getUserWeeklyXP(userkey, 1);
+          if (monthlyData && monthlyData.length >= 4) {
+            const last4Weeks = monthlyData.slice(-4);
+            timeframeXP = last4Weeks.reduce((sum, week) => sum + (week.weeklyXp || 0), 0);
           }
           periodStart.setMonth(now.getMonth() - 1);
-          break;
-        case 'season':
-          // Get season XP
-          if (currentSeason) {
-            timeframeXP = await ethosClient.getUserSeasonXP(userkey, currentSeason.id);
-          }
-          periodStart = new Date(now.getFullYear(), 0, 1);
           break;
         case 'year':
           // Year timeframe uses total XP
@@ -180,8 +160,7 @@ export class DynamicAPIExecutor {
         start: periodStart.toISOString(),
         end: now.toISOString()
       },
-      weeklyDetails,
-      currentSeason
+      weeklyDetails
     };
     
     return {
