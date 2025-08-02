@@ -75,16 +75,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   "query": "alice",
                   "limit": "5"
                 },
-                "natural_response": "SCANNING USER DATABASE...\n├─ XP DATA RETRIEVED\n└─ COOKEDZERA ANALYSIS COMPLETE"
+                "natural_response": "XP DATA RETRIEVED FOR COOKEDZERA"
               }
 
               RESPONSE STYLE REQUIREMENTS:
-              - Use terminal commands like "SCANNING...", "ANALYSIS COMPLETE", "DATA RETRIEVED"
-              - Include ASCII characters: ├─ └─ ═══ for formatting
-              - Use retro emojis: ⚡ 🏆 🥈 🥉 ⭐ 📈 📊 🎯
-              - Keep responses concise but informative
-              - Use ALL CAPS for system messages
-              - Include progress indicators and completion messages
+              - Keep natural_response SHORT and DIRECT - max 1-2 lines
+              - Use simple terminal style: "DATA RETRIEVED", "ANALYSIS COMPLETE"
+              - NO ASCII art, NO multi-line formatting, NO progress indicators
+              - Just state what was done: "XP DATA RETRIEVED FOR [USERNAME]"
+              - Examples of good responses:
+                * "XP DATA RETRIEVED FOR COOKEDZERA"
+                * "PROFILE DATA FOUND"
+                * "LEADERBOARD GENERATED"
+                * "USER COMPARISON COMPLETE"
 
               IMPORTANT: Only use intent "help" for truly unclear queries. For any mention of users, profiles, scores, reputation, leaderboards, comparisons, or reviews - classify properly.
               
