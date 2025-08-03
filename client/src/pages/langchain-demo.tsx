@@ -71,16 +71,16 @@ export default function LangChainDemo() {
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-green-400 font-mono">
-            LangChain AI Agent Demo
+            Ethos AI Agent
           </h1>
           <p className="text-gray-300 text-lg max-w-3xl mx-auto">
-            Natural language queries powered by Groq Mixtral + Ethos Network API. 
-            Ask about any Web3 reputation data using plain English.
+            Natural language queries for Web3 reputation data powered by Groq Llama 3.3 + Ethos Network API. 
+            Ask about any wallet, ENS name, or username using plain English.
           </p>
           <div className="flex justify-center gap-2">
             <Badge variant="secondary" className="bg-green-900 text-green-200">
               <Bot className="w-3 h-3 mr-1" />
-              Groq Mixtral-8x7B
+              Groq Llama 3.3-70B
             </Badge>
             <Badge variant="secondary" className="bg-blue-900 text-blue-200">
               <Terminal className="w-3 h-3 mr-1" />
@@ -267,9 +267,9 @@ export default function LangChainDemo() {
         {/* Footer */}
         <div className="text-center text-gray-500 text-sm">
           <p>
-            Powered by LangChain + Groq Mixtral + Ethos Network API
+            Powered by LangChain + Groq Llama 3.3 + Ethos Network API
             <br />
-            Optimized for Vercel deployment with fast, cached responses
+            Optimized for fast responses with real-time Web3 reputation data
           </p>
         </div>
       </div>
