@@ -249,7 +249,7 @@ export class DynamicAPIExecutor {
   }
   
   // New comprehensive activity and history methods
-  private static async getUserActivities(userkey: string, direction: string = 'subject', activityType?: string, limit: number = 50): Promise<APIExecutionResult> {
+  private static async getUserActivities(userkey: string, direction: string = 'all', activityType?: string, limit: number = 50): Promise<APIExecutionResult> {
     if (!userkey) {
       return {
         success: false,
@@ -262,7 +262,7 @@ export class DynamicAPIExecutor {
     const activities = await ethosClient.getUserActivities(userkey, direction, activityType, limit);
     
     return {
-      success: activities.length > 0,
+      success: true, // Always successful, even if no activities found
       data: {
         activities,
         userkey,
@@ -270,8 +270,10 @@ export class DynamicAPIExecutor {
         activityType: activityType || 'all',
         total: activities.length
       },
-      message: `Retrieved ${activities.length} activities for ${userkey}`,
-      isRealData: activities.length > 0
+      message: activities.length > 0 ? 
+        `Retrieved ${activities.length} activities for ${userkey}` : 
+        `No activities found for ${userkey}`,
+      isRealData: true // This is real API data, even if empty
     };
   }
 

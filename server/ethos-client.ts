@@ -163,6 +163,39 @@ export class EthosNetworkClient {
     return null;
   }
 
+  // Helper method to get raw user data without transformation
+  private async getRawUserData(userkey: string): Promise<any> {
+    // Try Twitter/X username lookup first (most common)
+    try {
+      const xResult = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (xResult && xResult.length > 0) {
+        return xResult[0];
+      }
+    } catch (error) {
+      console.log(`Twitter/X lookup failed for ${userkey}`);
+    }
+
+    // Try Farcaster username lookup
+    try {
+      const farcasterResult = await this.request('/users/by/farcaster/usernames', {
+        method: 'POST',
+        body: JSON.stringify({ farcasterUsernames: [userkey] })
+      });
+      
+      if (farcasterResult.users && farcasterResult.users.length > 0) {
+        return farcasterResult.users[0].user;
+      }
+    } catch (error) {
+      console.log(`Farcaster username lookup failed for ${userkey}`);
+    }
+
+    return null;
+  }
+
   private transformUserData(userData: any): EthosProfile & { xpTotal: number } {
     return {
       address: userData.userkeys?.[0] || userData.id?.toString() || '',
@@ -395,20 +428,46 @@ export class EthosNetworkClient {
   }
 
   // New comprehensive activity and history methods
-  async getUserActivities(userkey: string, direction: string = 'subject', activityType?: string, limit: number = 50): Promise<any[]> {
+  async getUserActivities(userkey: string, direction: string = 'all', activityType?: string, limit: number = 50): Promise<any[]> {
     try {
-      const params = new URLSearchParams({
-        userkey,
-        direction,
-        limit: limit.toString()
-      });
-      
-      if (activityType) {
-        params.append('activityType', activityType);
+      // First resolve the userkey to get the proper Ethos userkey
+      const rawUserData = await this.getRawUserData(userkey);
+      if (!rawUserData || !rawUserData.userkeys || rawUserData.userkeys.length === 0) {
+        console.log(`No profile found for ${userkey}`);
+        return [];
       }
       
-      const activities = await this.request(`/activities/userkey?${params}`);
-      return activities || [];
+      // Use the first userkey from the raw data
+      const ethosUserkey = rawUserData.userkeys[0];
+      
+      // Use POST endpoint for profile activities based on direction
+      let endpoint = '/activities/profile/all';
+      if (direction === 'author' || direction === 'given') {
+        endpoint = '/activities/profile/given';
+      } else if (direction === 'subject' || direction === 'received') {
+        endpoint = '/activities/profile/received';
+      }
+      
+      const body: any = {
+        userkey: ethosUserkey,
+        limit,
+        offset: 0,
+        orderBy: {
+          field: 'timestamp',
+          direction: 'desc'
+        }
+      };
+      
+      if (activityType) {
+        body.filter = [activityType];
+      }
+      
+      const response = await this.request(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      
+      return response?.values || [];
     } catch (error) {
       console.error('Error fetching user activities:', error);
       return [];
