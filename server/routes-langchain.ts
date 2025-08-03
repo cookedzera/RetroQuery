@@ -10,7 +10,31 @@ import { AgentExecutor, createReactAgent } from 'langchain/agents';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { getEthosScore } from '../lib/ethos-langchain.js';
 
-// Simple LangChain chain without agent complexity
+// Ethos Network whitepaper knowledge for enhanced responses
+const ETHOS_KNOWLEDGE = `
+Ethos Network Whitepaper Knowledge:
+
+CORE CONCEPTS:
+- Ethos measures credibility and reputation onchain to solve crypto's trust problem
+- Modern society runs on credibility (resumes, reviews, ratings) - crypto is missing this
+- Ethos provides a credibility score like a credit report but with open protocols and onchain records
+- Uses "social Proof of Stake" - decentralized consensus driven by human values and actions
+
+KEY MECHANISMS:
+1. REVIEW: Standard rate and comment interface for reputation building
+2. VOUCH: Stake Ethereum in other people - highest credibility signal (like traditional PoS staking)
+3. SLASH: Bad actors can be slashed, removing percentage of staked ETH. Failed slashing proposals penalize the proposer
+4. INVITE: Users must be invited by existing profiles. Creates credibility bonds between inviters/invitees (sybil resistance)
+5. ATTEST: Connect other social network profiles to single Ethos profile to reflect authority from other sources
+6. CREDIBILITY SCORE: Single numerical score generated from all social interactions
+7. PROFILE: Shows score plus corroborating details - allies, enemies, praise, gaffes, promises kept/broken
+
+GOVERNANCE: Algorithm control will transition from Ethos Labs to participants (decentralized governance)
+
+IMPACT: Crypto economy thrives when everyone can readily ascertain credibility. Expects meaningful credibility to fund projects, have trusted voice, or exchange goods.
+`;
+
+// Enhanced LangChain agent with Ethos Network knowledge
 async function createEthosAgent(groqApiKey: string) {
   try {
     // Initialize Groq LLM with supported model
@@ -18,16 +42,36 @@ async function createEthosAgent(groqApiKey: string) {
       model: 'llama-3.3-70b-versatile',
       apiKey: groqApiKey,
       temperature: 0.1,
-      maxTokens: 1000,
+      maxTokens: 1500,
       streaming: false
     });
 
-    // Return a simple function that handles queries directly
+    // Return enhanced function with Ethos knowledge
     return {
       invoke: async (input: { input: string }) => {
         const query = input.input.toLowerCase();
         
-        // Extract usernames/addresses from query
+        // Check if this is a conceptual question about Ethos Network
+        const conceptualTerms = ['how does', 'what is', 'explain', 'mechanism work', 'social proof', 'credibility scor', 'ethos network', 'vouch work', 'slash work', 'review work', 'invite system', 'attest work'];
+        const isConceptualQuery = conceptualTerms.some(term => query.includes(term));
+        
+        if (isConceptualQuery) {
+          // Use LLM with Ethos knowledge for conceptual questions
+          const response = await llm.invoke([
+            {
+              role: 'system',
+              content: `You are an expert on Ethos Network. Use this whitepaper knowledge to answer questions: ${ETHOS_KNOWLEDGE}`
+            },
+            {
+              role: 'user', 
+              content: query
+            }
+          ]);
+          
+          return { output: response.content };
+        }
+        
+        // For profile queries, extract usernames/addresses
         const addressMatch = query.match(/(0x[a-fA-F0-9]{40})/);
         const farcasterMatch = query.match(/farcaster:(\d+)/);
         const ensMatch = query.match(/(\w+\.eth)/);
@@ -39,12 +83,12 @@ async function createEthosAgent(groqApiKey: string) {
         else if (farcasterMatch) userkey = `farcaster:${farcasterMatch[1]}`;
         else if (usernameMatch) userkey = usernameMatch[1];
         else {
-          // Try to extract any word that might be a username
+          // Only try to extract usernames for non-conceptual queries
           const words = query.split(/\s+/);
-          const skipWords = ['what', 'is', 'the', 'score', 'reputation', 'vouch', 'tell', 'can', 'you', 'show', 'me', 'get', 'find', 'check'];
+          const skipWords = ['what', 'is', 'the', 'score', 'reputation', 'vouch', 'tell', 'can', 'you', 'show', 'me', 'get', 'find', 'check', 'how', 'does', 'work', 'explain', 'social', 'proof', 'stake', 'mechanism', 'network', 'ethos'];
           for (const word of words) {
             const cleanWord = word.replace(/[^\w.-]/g, '');
-            if (cleanWord.length > 2 && !skipWords.includes(cleanWord)) {
+            if (cleanWord.length > 2 && !skipWords.includes(cleanWord) && !['credibility', 'scoring', 'slashing', 'vouching', 'reviewing'].includes(cleanWord)) {
               userkey = cleanWord;
               break;
             }
@@ -52,24 +96,44 @@ async function createEthosAgent(groqApiKey: string) {
         }
         
         if (!userkey) {
-          return { output: "I couldn't identify a username or address in your query. Please specify who you'd like to look up." };
+          // For non-conceptual queries without clear userkeys, use LLM to help
+          const response = await llm.invoke([
+            {
+              role: 'system',
+              content: `You are an expert on Ethos Network. If the user is asking about concepts, explain them using this knowledge: ${ETHOS_KNOWLEDGE}. If they're asking about a specific person/profile but you can't identify who, ask them to clarify.`
+            },
+            {
+              role: 'user', 
+              content: query
+            }
+          ]);
+          
+          return { output: response.content };
         }
         
         try {
           const score = await getEthosScore(userkey);
           
           if (!score) {
-            return { output: `No Ethos Network profile found for "${userkey}". This user may not have onchain reputation data.` };
+            return { output: `No Ethos Network profile found for "${userkey}". This user may not have onchain reputation data yet. In Ethos Network, users must be invited by existing profiles to participate.` };
           }
 
-          // Format response based on query type
-          if (query.includes('vouch') && query.includes('$')) {
+          // Enhanced response formatting with Ethos context
+          if (query.includes('vouch')) {
+            const vouchExplanation = score.vouchCount > 0 
+              ? `This represents ${score.vouchCount} people who have staked their Ethereum to vouch for ${score.displayName || userkey}'s credibility - the highest trust signal in Ethos Network.`
+              : `No vouches yet. Vouches are when someone stakes their Ethereum to vouch for another person's credibility - the strongest trust signal in Ethos.`;
+            
             return { 
-              output: `${score.displayName || userkey} has ${score.vouchCount || 0} vouches on Ethos Network. Vouches don't have a specific dollar value - they represent trust endorsements from other users. Their overall reputation score is ${score.score}.` 
+              output: `${score.displayName || userkey} has ${score.vouchCount || 0} vouches on Ethos Network. ${vouchExplanation} Their overall credibility score is ${score.score}.` 
+            };
+          } else if (query.includes('review')) {
+            return {
+              output: `${score.displayName || userkey} has received ${score.reviewCount || 0} reviews on Ethos Network. Reviews provide peer feedback and help build reputation outside of financially-backed stakes. Their credibility score is ${score.score}.`
             };
           } else {
             return { 
-              output: `${score.displayName || userkey} has a reputation score of ${score.score}, with ${score.xpTotal || 0} total XP, ${score.reviewCount || 0} reviews received, ${score.vouchCount || 0} vouches received, and ${score.status} status.` 
+              output: `${score.displayName || userkey}'s Ethos Network credibility profile: Score ${score.score}, ${score.xpTotal || 0} total XP, ${score.reviewCount || 0} reviews, ${score.vouchCount || 0} vouches, status: ${score.status}. Their score reflects social consensus about their reputation in the Web3 ecosystem.` 
             };
           }
         } catch (error) {

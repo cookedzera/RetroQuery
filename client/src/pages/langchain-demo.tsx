@@ -25,9 +25,10 @@ export default function LangChainDemo() {
 
   const exampleQueries = [
     "What is cookedzera's reputation score?",
-    "Check vitalik.eth's Ethos Network data",
-    "Show me the reputation of 0x742d35Cc6064F7AF4B5A9D8E5A6E02f4d6a6A9C7",
-    "Compare alice.eth vs bob.eth reputation",
+    "How does the vouch mechanism work in Ethos?",
+    "What is social Proof of Stake?",
+    "Explain Ethos credibility scoring",
+    "How many vouches does serpinxbt have?",
     "What is farcaster:3621's onchain credibility?"
   ];
 

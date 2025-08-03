@@ -95,6 +95,8 @@ Preferred communication style: Simple, everyday language.
 - **✅ USER RESOLUTION**: Enhanced userkey resolution system to handle Twitter/X and Farcaster username lookups
 - **✅ LANGCHAIN OPTIMIZATIONS**: Fixed "Invalid stopping method" error and replaced ReAct agent with direct query processing
 - **✅ TERMINAL REMOVAL**: Removed terminal interface, made LangChain AI agent the default homepage
+- **✅ ETHOS WHITEPAPER INTEGRATION**: Integrated complete Ethos Network whitepaper knowledge for enhanced conceptual understanding
+- **✅ HYBRID QUERY PROCESSING**: Agent now handles both profile lookups AND conceptual questions about Ethos mechanisms
 
 ### LangChain AI Agent Interface
 - **Modern Dark Theme**: Clean, professional interface optimized for AI interactions
