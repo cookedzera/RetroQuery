@@ -344,17 +344,21 @@ export class EthosNetworkClient {
     return null;
   }
 
-  // Helper method to get raw user data without transformation
-  private async getRawUserData(userkey: string): Promise<any> {
+  // Helper method to resolve userkey to the correct format for XP API calls
+  private async resolveUserkey(userkey: string): Promise<string | null> {
     // Try Twitter/X username lookup first (most common)
     try {
+      console.log(`Looking up user: ${userkey}`);
+      console.log(`Trying Twitter/X lookup for: ${userkey}`);
       const xResult = await this.request('/users/by/x', {
         method: 'POST',
         body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
       });
       
       if (xResult && xResult.length > 0) {
-        return xResult[0];
+        console.log(`Found Twitter/X user: ${userkey}`);
+        // Return the first userkey from the user's userkeys array
+        return xResult[0].userkeys?.[0] || xResult[0].id?.toString() || null;
       }
     } catch (error) {
       console.log(`Twitter/X lookup failed for ${userkey}`);
@@ -362,16 +366,24 @@ export class EthosNetworkClient {
 
     // Try Farcaster username lookup
     try {
+      console.log(`Trying Farcaster lookup for: ${userkey}`);
       const farcasterResult = await this.request('/users/by/farcaster/usernames', {
         method: 'POST',
         body: JSON.stringify({ farcasterUsernames: [userkey] })
       });
       
       if (farcasterResult.users && farcasterResult.users.length > 0) {
-        return farcasterResult.users[0].user;
+        console.log(`Found Farcaster user: ${userkey}`);
+        // Return the first userkey from the user's userkeys array
+        return farcasterResult.users[0].user.userkeys?.[0] || farcasterResult.users[0].user.id?.toString() || null;
       }
     } catch (error) {
       console.log(`Farcaster username lookup failed for ${userkey}`);
+    }
+
+    // If it's already in the correct format (like an address), return it
+    if (userkey.startsWith('0x') || userkey.includes('service:') || userkey.includes('address:')) {
+      return userkey;
     }
 
     return null;
@@ -395,15 +407,15 @@ export class EthosNetworkClient {
 
   async getUserXP(userkey: string): Promise<number> {
     try {
-      // First get the profile to find the correct userkey format
-      const profile = await this.getProfileData(userkey);
-      if (!profile || !profile.address) {
+      // First resolve the user to get their correct userkey
+      const resolvedUserkey = await this.resolveUserkey(userkey);
+      if (!resolvedUserkey) {
+        console.log(`Could not resolve userkey for: ${userkey}`);
         return 0;
       }
       
-      // Use the correct userkey from the profile data
-      const correctUserkey = profile.address;
-      const xpTotal = await this.request(`/xp/user/${encodeURIComponent(correctUserkey)}`);
+      // Use the XP API endpoint with the resolved userkey
+      const xpTotal = await this.request(`/xp/user/${encodeURIComponent(resolvedUserkey)}`);
       return typeof xpTotal === 'number' ? xpTotal : 0;
     } catch (error) {
       console.error(`Failed to get XP for ${userkey}:`, error);
@@ -413,8 +425,14 @@ export class EthosNetworkClient {
 
   async getUserXPBySeasonAndWeek(userkey: string, seasonId: number): Promise<any[]> {
     try {
+      // First resolve the user to get their correct userkey
+      const resolvedUserkey = await this.resolveUserkey(userkey);
+      if (!resolvedUserkey) {
+        return [];
+      }
+      
       // Get weekly XP data for a specific season
-      const weeklyData = await this.request(`/xp/user/${encodeURIComponent(userkey)}/season/${seasonId}/weekly`);
+      const weeklyData = await this.request(`/xp/user/${encodeURIComponent(resolvedUserkey)}/season/${seasonId}/weekly`);
       return weeklyData || [];
     } catch (error) {
       console.error(`Failed to get weekly XP for ${userkey}:`, error);
@@ -422,21 +440,47 @@ export class EthosNetworkClient {
     }
   }
 
-  async getXPForTimeframe(userkey: string, startDate: Date, endDate: Date): Promise<number> {
+  async getUserSeasonXP(userkey: string, seasonId: number): Promise<number> {
     try {
-      // First get the profile to find the correct userkey format
-      const profile = await this.getProfileData(userkey);
-      if (!profile || !profile.address) {
+      // First resolve the user to get their correct userkey
+      const resolvedUserkey = await this.resolveUserkey(userkey);
+      if (!resolvedUserkey) {
         return 0;
       }
       
-      // For now, return 0 for timeframe-specific XP since Ethos API doesn't provide this granular data
-      // In a real implementation, you would need to aggregate XP activities within the timeframe
-      console.log(`Timeframe XP calculation not implemented for ${userkey} between ${startDate.toISOString()} and ${endDate.toISOString()}`);
-      return 0;
+      // Get XP for specific season
+      const seasonXP = await this.request(`/xp/user/${encodeURIComponent(resolvedUserkey)}/season/${seasonId}`);
+      return typeof seasonXP === 'number' ? seasonXP : 0;
     } catch (error) {
-      console.error(`Failed to get timeframe XP for ${userkey}:`, error);
+      console.error(`Failed to get season XP for ${userkey}:`, error);
       return 0;
+    }
+  }
+
+  async getUserLeaderboardRank(userkey: string): Promise<number> {
+    try {
+      // First resolve the user to get their correct userkey
+      const resolvedUserkey = await this.resolveUserkey(userkey);
+      if (!resolvedUserkey) {
+        return 0;
+      }
+      
+      // Get leaderboard rank
+      const rank = await this.request(`/xp/user/${encodeURIComponent(resolvedUserkey)}/leaderboard-rank`);
+      return typeof rank === 'number' ? rank : 0;
+    } catch (error) {
+      console.error(`Failed to get leaderboard rank for ${userkey}:`, error);
+      return 0;
+    }
+  }
+
+  async getXPSeasons(): Promise<any> {
+    try {
+      // Get all seasons and current season info
+      return await this.request('/xp/seasons');
+    } catch (error) {
+      console.error('Failed to get XP seasons:', error);
+      return { seasons: [], currentSeason: null };
     }
   }
 
@@ -555,26 +599,7 @@ export class EthosNetworkClient {
     }
   }
 
-  async getUserSeasonXP(userkey: string, seasonId: number): Promise<number> {
-    try {
-      // Get user profile with Twitter/X lookup to find proper userkey
-      const xResult = await this.request('/users/by/x', {
-        method: 'POST',
-        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
-      });
-      
-      if (!xResult || xResult.length === 0 || !xResult[0].userkeys || xResult[0].userkeys.length === 0) {
-        return 0;
-      }
-      
-      const ethosUserkey = xResult[0].userkeys[0]; // Use the first userkey from Ethos
-      const xp = await this.request(`/xp/user/${encodeURIComponent(ethosUserkey)}/season/${seasonId}`);
-      return xp || 0;
-    } catch (error) {
-      console.error('Error fetching user season XP:', error);
-      return 0;
-    }
-  }
+
 
   async getUserWeeklyXP(userkey: string, seasonId: number): Promise<Array<{ week: number; weeklyXp: number; cumulativeXp: number }>> {
     try {
@@ -612,14 +637,14 @@ export class EthosNetworkClient {
   async getUserActivities(userkey: string, direction: string = 'all', activityType?: string, limit: number = 50): Promise<any[]> {
     try {
       // First resolve the userkey to get the proper Ethos userkey
-      const rawUserData = await this.getRawUserData(userkey);
-      if (!rawUserData || !rawUserData.userkeys || rawUserData.userkeys.length === 0) {
+      const rawUserData = await this.resolveUserkey(userkey);
+      if (!rawUserData) {
         console.log(`No profile found for ${userkey}`);
         return [];
       }
       
-      // Use the first userkey from the raw data
-      const ethosUserkey = rawUserData.userkeys[0];
+      // Use the resolved userkey
+      const ethosUserkey = rawUserData;
       
       // Use POST endpoint for profile activities based on direction
       let endpoint = '/activities/profile/all';

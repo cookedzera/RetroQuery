@@ -441,51 +441,38 @@ export class EthosLangChainClient {
   }
 
   /**
-   * Get detailed XP data for a user
+   * Get detailed XP data for a user using the enhanced EthosNetworkClient
    */
   async getXPData(userkey: string): Promise<XPData | null> {
     try {
-      const normalizedKey = this.normalizeUserkey(userkey);
+      const client = new (await import('../server/ethos-client.js')).EthosNetworkClient();
       
       // Get total XP across all seasons
-      const totalXP = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}`);
+      const totalXP = await client.getUserXP(userkey);
       
       // Get seasons information
-      const seasonsData = await this.request('/xp/seasons');
+      const seasonsData = await client.getXPSeasons();
       const currentSeason = seasonsData.currentSeason;
       
       // Get current season XP
       let currentSeasonXP = null;
       if (currentSeason) {
-        try {
-          currentSeasonXP = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/season/${currentSeason.id}`);
-        } catch (error) {
-          console.log(`Current season XP not found for ${normalizedKey}`);
-        }
+        currentSeasonXP = await client.getUserSeasonXP(userkey, currentSeason.id);
       }
       
       // Get leaderboard rank
-      let leaderboardRank = null;
-      try {
-        leaderboardRank = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/leaderboard-rank`);
-      } catch (error) {
-        console.log(`Leaderboard rank not found for ${normalizedKey}`);
-      }
+      const leaderboardRank = await client.getUserLeaderboardRank(userkey);
       
       // Get weekly data for current season
-      let weeklyData = null;
+      let weeklyData: WeeklyXPData[] = [];
       if (currentSeason) {
-        try {
-          weeklyData = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/season/${currentSeason.id}/weekly`);
-        } catch (error) {
-          console.log(`Weekly XP data not found for ${normalizedKey}`);
-        }
+        weeklyData = await client.getUserXPBySeasonAndWeek(userkey, currentSeason.id);
       }
 
       return {
         totalXP: totalXP || 0,
         currentSeasonXP: currentSeasonXP || 0,
-        leaderboardRank,
+        leaderboardRank: leaderboardRank || 0,
         weeklyData
       };
     } catch (error) {
