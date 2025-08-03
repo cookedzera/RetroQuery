@@ -15,6 +15,11 @@ export interface EthosScore {
   status: 'ACTIVE' | 'INACTIVE';
   displayName?: string;
   username?: string;
+  // Enhanced XP data
+  currentSeasonXP?: number;
+  weeklyXPData?: Array<{ week: number; weeklyXp: number; cumulativeXp: number }>;
+  currentSeason?: string;
+  leaderboardRank?: number;
 }
 
 export interface XPData {
@@ -534,7 +539,55 @@ export const ethosClient = new EthosLangChainClient();
 
 // Helper functions for easy import
 export async function getEthosScore(userkey: string): Promise<EthosScore | null> {
-  return ethosClient.getEthosScore(userkey);
+  // Try enhanced XP client first for comprehensive data
+  try {
+    const { EthosNetworkClient } = await import('../server/ethos-client.js');
+    const enhancedClient = new EthosNetworkClient();
+    
+    // Get basic profile data
+    const profileData = await enhancedClient.getProfileData(userkey);
+    if (!profileData) {
+      return ethosClient.getEthosScore(userkey); // Fallback to original
+    }
+
+    // Get enhanced XP data
+    const totalXP = await enhancedClient.getUserXP(userkey);
+    const seasonsData = await enhancedClient.getXPSeasons();
+    const currentSeason = seasonsData.currentSeason;
+    
+    let currentSeasonXP = 0;
+    let weeklyXPData = [];
+    let leaderboardRank = 0;
+    
+    if (currentSeason) {
+      currentSeasonXP = await enhancedClient.getUserSeasonXP(userkey, currentSeason.id);
+      weeklyXPData = await enhancedClient.getUserXPBySeasonAndWeek(userkey, currentSeason.id);
+      leaderboardRank = await enhancedClient.getUserLeaderboardRank(userkey);
+    }
+    
+    // Return enhanced EthosScore with XP data
+    const enhancedScore: EthosScore = {
+      userkey: userkey,
+      score: profileData.score,
+      rank: profileData.rank,
+      xpTotal: totalXP,
+      reviewCount: profileData.reviewCount,
+      vouchCount: profileData.vouchCount,
+      status: profileData.status || 'ACTIVE',
+      displayName: profileData.displayName,
+      username: profileData.username,
+      // Add XP breakdown data
+      currentSeasonXP,
+      weeklyXPData,
+      currentSeason: currentSeason?.name,
+      leaderboardRank
+    };
+    
+    return enhancedScore;
+  } catch (error) {
+    console.log('Enhanced XP lookup failed, using fallback:', error);
+    return ethosClient.getEthosScore(userkey);
+  }
 }
 
 export async function getXPData(userkey: string): Promise<XPData | null> {

@@ -181,34 +181,182 @@ async function createEthosAgent(groqApiKey: string) {
         }
         
         try {
-          const score = await getEthosScore(identifier);
+          console.log(`DEBUG: Enhanced XP lookup starting for identifier: ${identifier}`);
           
-          if (!score) {
+          // Import enhanced client for comprehensive XP data
+          const { EthosNetworkClient } = await import('./ethos-client.js');
+          const client = new EthosNetworkClient();
+          
+          // Get comprehensive profile and XP data
+          console.log(`DEBUG: Fetching profile data for: ${identifier}`);
+          const profileData = await client.getProfileData(identifier);
+          console.log(`DEBUG: Profile data result:`, profileData);
+          
+          if (!profileData) {
+            console.log(`DEBUG: No profile data found for ${identifier}`);
             return { output: `No Ethos Network profile found for "${identifier}". This identifier may not have onchain reputation data yet. In Ethos Network, users must be invited by existing profiles to participate. Try different formats: addresses (0x...), ENS (.eth), usernames, Telegram ID (telegram:123), Discord ID (discord:123), or Farcaster username (farcaster:username).` };
+          }
+          
+          console.log(`DEBUG: Profile found, fetching XP data for: ${identifier}`);
+
+          // Get enhanced XP data using official API v2 endpoints
+          const totalXP = await client.getUserXP(identifier);
+          const seasonsData = await client.getXPSeasons();
+          const currentSeason = seasonsData.currentSeason;
+          
+          let currentSeasonXP = 0;
+          let weeklyXPData = [];
+          let leaderboardRank = 0;
+          
+          if (currentSeason) {
+            currentSeasonXP = await client.getUserSeasonXP(identifier, currentSeason.id);
+            weeklyXPData = await client.getUserXPBySeasonAndWeek(identifier, currentSeason.id);
+            leaderboardRank = await client.getUserLeaderboardRank(identifier);
           }
 
           // Enhanced response formatting with platform context
           const platformInfo = getPlatformInfo(identifier);
-          const displayName = score.displayName || score.username || identifier;
+          const displayName = identifier;
           
-          if (query.includes('vouch')) {
-            const vouchExplanation = (score.vouchCount || 0) > 0 
-              ? `This represents ${score.vouchCount || 0} people who have staked their Ethereum to vouch for ${displayName}'s credibility - the highest trust signal in Ethos Network.`
+          // Check for specific query types and provide detailed responses
+          if (query.includes('weekly') || query.includes('week')) {
+            let response = `${displayName}${platformInfo} Weekly XP Performance:
+
+⚡ XP METRICS:
+- Total XP (All Time): ${totalXP.toLocaleString()}`;
+
+            if (currentSeason) {
+              response += `
+- Current Season (${currentSeason.name}): ${currentSeasonXP.toLocaleString()} XP
+- Global Leaderboard Rank: #${leaderboardRank.toLocaleString()}`;
+            }
+
+            // Add weekly XP breakdown if available
+            if (weeklyXPData && weeklyXPData.length > 0) {
+              response += `
+
+📊 WEEKLY XP BREAKDOWN (Last ${Math.min(weeklyXPData.length, 4)} weeks):`;
+              
+              const recentWeeks = weeklyXPData.slice(-4).reverse();
+              recentWeeks.forEach((week, index) => {
+                const weekLabel = index === 0 ? 'This Week' : `${index + 1} weeks ago`;
+                response += `
+- ${weekLabel} (Week ${week.week}): ${week.weeklyXp} XP (Cumulative: ${week.cumulativeXp})`;
+              });
+            } else {
+              response += `
+
+📊 Weekly XP data is not available for this user at the moment.`;
+            }
+
+            response += `
+
+This data represents real-time XP performance from the Ethos Network API v2.`;
+            return { output: response };
+          } else if (query.includes('vouch')) {
+            const vouchExplanation = (profileData.vouchCount || 0) > 0 
+              ? `This represents ${profileData.vouchCount || 0} people who have staked their Ethereum to vouch for ${displayName}'s credibility - the highest trust signal in Ethos Network.`
               : `No vouches yet. Vouches are when someone stakes their Ethereum to vouch for another person's credibility - the strongest trust signal in Ethos.`;
             
             return { 
-              output: `${displayName}${platformInfo} has ${score.vouchCount || 0} vouches on Ethos Network. ${vouchExplanation} Their overall credibility score is ${score.score}.` 
+              output: `${displayName}${platformInfo} has ${profileData.vouchCount || 0} vouches on Ethos Network. ${vouchExplanation} Their overall credibility score is ${profileData.score}.` 
             };
           } else if (query.includes('review')) {
             return {
-              output: `${displayName}${platformInfo} has received ${score.reviewCount || 0} reviews on Ethos Network. Reviews provide peer feedback and help build reputation outside of financially-backed stakes. Their credibility score is ${score.score}.`
+              output: `${displayName}${platformInfo} has received ${profileData.reviewCount || 0} reviews on Ethos Network. Reviews provide peer feedback and help build reputation outside of financially-backed stakes. Their credibility score is ${profileData.score}.`
             };
           } else {
-            return { 
-              output: `${displayName}${platformInfo} Ethos Network profile: Score ${score.score}, ${score.xpTotal || 0} total XP, ${score.reviewCount || 0} reviews, ${score.vouchCount || 0} vouches, status: ${score.status}. Their score reflects social consensus about their reputation in the Web3 ecosystem.` 
-            };
+            // Default comprehensive response
+            let response = `${displayName}${platformInfo} Ethos Network Profile:
+
+🏆 REPUTATION METRICS:
+- Reputation Score: ${profileData.score}
+- Reviews Received: ${profileData.reviewCount}
+- Vouches Received: ${profileData.vouchCount}
+- Account Status: ACTIVE
+
+⚡ XP PERFORMANCE:
+- Total XP (All Time): ${totalXP.toLocaleString()}`;
+
+            if (currentSeason) {
+              response += `
+- Current Season (${currentSeason.name}): ${currentSeasonXP.toLocaleString()} XP
+- Global Leaderboard Rank: #${leaderboardRank.toLocaleString()}`;
+            }
+
+            response += `
+
+This data represents their real-time onchain reputation and activity metrics from the Ethos Network.`;
+            return { output: response };
           }
         } catch (error) {
+          // Fallback to basic score lookup if enhanced data fails
+          console.error('Enhanced XP lookup failed, falling back to basic data:', error);
+          try {
+            const score = await getEthosScore(identifier);
+            if (score) {
+              // Check if this is a weekly XP query and we have enhanced data
+              if ((query.includes('weekly') || query.includes('week')) && score.weeklyXPData && score.weeklyXPData.length > 0) {
+                let response = `${identifier} Weekly XP Performance:
+
+⚡ XP METRICS:
+- Total XP (All Time): ${(score.xpTotal || 0).toLocaleString()}`;
+
+                if (score.currentSeason) {
+                  response += `
+- Current Season (${score.currentSeason}): ${(score.currentSeasonXP || 0).toLocaleString()} XP`;
+                  if (score.leaderboardRank) {
+                    response += `
+- Global Leaderboard Rank: #${score.leaderboardRank.toLocaleString()}`;
+                  }
+                }
+
+                response += `
+
+📊 WEEKLY XP BREAKDOWN (Last ${Math.min(score.weeklyXPData.length, 4)} weeks):`;
+                
+                const recentWeeks = score.weeklyXPData.slice(-4).reverse();
+                recentWeeks.forEach((week, index) => {
+                  const weekLabel = index === 0 ? 'This Week' : `${index + 1} weeks ago`;
+                  response += `
+- ${weekLabel} (Week ${week.week}): ${week.weeklyXp} XP (Cumulative: ${week.cumulativeXp})`;
+                });
+
+                response += `
+
+This data represents real-time XP performance from the Ethos Network API v2.`;
+                return { output: response };
+              } else {
+                // Enhanced default response with available XP data
+                let response = `${identifier} Ethos Network Profile:
+
+🏆 REPUTATION METRICS:
+- Reputation Score: ${score.score}
+- Reviews Received: ${score.reviewCount || 0}
+- Vouches Received: ${score.vouchCount || 0}
+- Account Status: ${score.status}
+
+⚡ XP PERFORMANCE:
+- Total XP (All Time): ${(score.xpTotal || 0).toLocaleString()}`;
+
+                if (score.currentSeason && score.currentSeasonXP) {
+                  response += `
+- Current Season (${score.currentSeason}): ${score.currentSeasonXP.toLocaleString()} XP`;
+                  if (score.leaderboardRank) {
+                    response += `
+- Global Leaderboard Rank: #${score.leaderboardRank.toLocaleString()}`;
+                  }
+                }
+
+                response += `
+
+This data represents their real-time onchain reputation and activity metrics from the Ethos Network.`;
+                return { output: response };
+              }
+            }
+          } catch (fallbackError) {
+            console.error('Fallback lookup also failed:', fallbackError);
+          }
           return { output: `Error fetching data for ${identifier}: ${error instanceof Error ? error.message : 'Unknown error'}` };
         }
       }
