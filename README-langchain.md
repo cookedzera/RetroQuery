@@ -1,6 +1,6 @@
-# LangChain AI Agent with Groq Mixtral and Ethos Network
+# LangChain AI Agent with Groq Llama 3.3 and Ethos Network
 
-This implementation provides a complete LangChain AI agent that uses Groq's Mixtral model and integrates with the Ethos Network API for Web3 reputation data.
+This implementation provides a complete LangChain AI agent that uses Groq's Llama 3.3 70B model and integrates with the Ethos Network API for Web3 reputation data.
 
 ## 🚀 Quick Start
 

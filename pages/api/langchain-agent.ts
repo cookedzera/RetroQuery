@@ -134,9 +134,9 @@ const ethosClient = new EthosClient();
 
 // Create LangChain agent
 async function createAgent(groqApiKey: string) {
-  // Initialize Groq LLM
+  // Initialize Groq LLM with supported model
   const llm = new ChatGroq({
-    model: 'mixtral-8x7b-32768',
+    model: 'llama-3.3-70b-versatile',
     apiKey: groqApiKey,
     temperature: 0.1,
     maxTokens: 1000,

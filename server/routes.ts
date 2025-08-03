@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ethosClient } from "./ethos-client";
 import { ethosMockClient } from "./ethos-mock-client";
 import { DynamicAPIExecutor } from "./dynamic-api-executor";
-import { handleLangChainQuery, handleAgentHealth } from "./routes-langchain.js";
+import { handleLangChainQuery, handleAgentHealth } from "./routes-langchain";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   

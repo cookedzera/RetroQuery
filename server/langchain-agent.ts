@@ -10,10 +10,10 @@ import { pull } from 'langchain/hub';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { getEthosScore, type EthosScore } from '../lib/ethos-langchain.js';
 
-// Initialize Groq LLM with Mixtral model
+// Initialize Groq LLM with supported model
 function createGroqLLM(apiKey: string) {
   return new ChatGroq({
-    model: 'mixtral-8x7b-32768',
+    model: 'llama-3.1-70b-versatile',
     apiKey: apiKey,
     temperature: 0.1, // Low temperature for consistent responses
     maxTokens: 1000,  // Limit tokens for faster responses
