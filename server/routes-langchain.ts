@@ -51,10 +51,14 @@ async function createEthosAgent(groqApiKey: string) {
       invoke: async (input: { input: string }) => {
         const query = input.input.toLowerCase();
         
-        // Prioritize user data queries over conceptual explanations
-        const hasUserIdentifier = /\b(?:cookedzera|vitalik|score|reputation|profile|reviews|vouches|xp)\b/i.test(query);
-        const conceptualTerms = ['how does', 'what is', 'explain', 'mechanism work', 'social proof', 'invite system', 'attest work'];
-        const isConceptualQuery = conceptualTerms.some(term => query.includes(term)) && !hasUserIdentifier;
+        // Detect if query contains specific user identifiers
+        const specificUsers = /\b(?:cookedzera|vitalik|alice|bob|charlie)\b/i.test(query);
+        const userDataTerms = /\b(?:score|reputation|profile|reviews|vouches|xp|activity|network)\b/i.test(query);
+        const hasUserQuery = specificUsers || (userDataTerms && /\b\w+(?:'s)?\b/.test(query));
+        
+        // Only treat as conceptual if it's clearly about mechanisms without specific users
+        const pureConceptualTerms = ['how does ethos work', 'what is social proof', 'explain mechanism', 'how do vouches work', 'invite system work'];
+        const isConceptualQuery = pureConceptualTerms.some(term => query.includes(term)) && !hasUserQuery;
         
         if (isConceptualQuery) {
           // Use LLM with Ethos knowledge for conceptual questions
@@ -117,25 +121,46 @@ async function createEthosAgent(groqApiKey: string) {
           }
         }
         
-        // Fallback: try to extract any username-like word
+        // Enhanced fallback: try to extract any username-like word, especially known users
         if (!identifier) {
-          const words = query.split(/\s+/);
-          const skipWords = ['what', 'is', 'the', 'score', 'reputation', 'vouch', 'tell', 'can', 'you', 'show', 'me', 'get', 'find', 'check', 'how', 'does', 'work', 'explain', 'social', 'proof', 'stake', 'mechanism', 'network', 'ethos', 'profile', 'credibility', 'scoring', 'slashing', 'vouching', 'reviewing'];
-          for (const word of words) {
-            const cleanWord = word.replace(/[^\w.-]/g, '');
-            if (cleanWord.length > 2 && !skipWords.includes(cleanWord)) {
-              identifier = cleanWord;
+          // First check for known usernames specifically
+          const knownUsers = ['cookedzera', 'vitalik', 'alice', 'bob', 'charlie'];
+          for (const user of knownUsers) {
+            if (query.includes(user)) {
+              identifier = user;
               break;
+            }
+          }
+          
+          // If no known user found, extract potential usernames
+          if (!identifier) {
+            const words = query.split(/\s+/);
+            const skipWords = ['what', 'is', 'the', 'score', 'reputation', 'vouch', 'tell', 'can', 'you', 'show', 'me', 'get', 'find', 'check', 'how', 'does', 'work', 'explain', 'social', 'proof', 'stake', 'mechanism', 'network', 'ethos', 'profile', 'credibility', 'scoring', 'slashing', 'vouching', 'reviewing'];
+            for (const word of words) {
+              const cleanWord = word.replace(/[^\w.-]/g, '');
+              if (cleanWord.length > 2 && !skipWords.includes(cleanWord)) {
+                identifier = cleanWord;
+                break;
+              }
             }
           }
         }
         
         if (!identifier) {
-          // For non-conceptual queries without clear identifiers, use LLM to help
+          // Log the detection issue for debugging
+          console.log(`DEBUG: No identifier found for query: "${query}"`);
+          console.log(`DEBUG: hasUserQuery: ${hasUserQuery}, isConceptualQuery: ${isConceptualQuery}`);
+          
+          // For queries that seem to be about users but we can't extract the identifier, try to help
+          if (hasUserQuery) {
+            return { output: `I can help you find information about users on Ethos Network, but I need the username or identifier to be clearer. Please specify the user in one of these formats: username (e.g., "cookedzera"), Ethereum address (0x...), ENS name (.eth), or social platform ID (telegram:123, discord:123, farcaster:username).` };
+          }
+          
+          // For pure conceptual queries, use LLM with whitepaper knowledge
           const response = await llm.invoke([
             {
               role: 'system',
-              content: `You are an expert on Ethos Network. If the user is asking about concepts, explain them using this knowledge: ${ETHOS_KNOWLEDGE}. If they're asking about a specific person/profile but you can't identify who, ask them to clarify and mention the supported formats: addresses (0x...), ENS (.eth), usernames, Telegram IDs (telegram:123), Discord IDs (discord:123), Farcaster usernames/IDs (farcaster:username), profile IDs (profileId:123).`
+              content: `You are an expert on Ethos Network. Use this whitepaper knowledge to answer questions: ${ETHOS_KNOWLEDGE}`
             },
             {
               role: 'user', 
