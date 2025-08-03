@@ -117,9 +117,9 @@ components/
 ```json
 {
   "success": true,
-  "response": "Ethos Network reputation for cookedzera:\n- Reputation Score: 1373\n- Total XP: 5505\n- Reviews Received: 9\n- Vouches Received: 2\n- Status: ACTIVE\n- Userkey: service:x.com:2489149172",
-  "executionTime": 1247,
-  "timestamp": "2025-08-03T09:20:00.000Z"
+  "response": "cookedzera has a reputation score of 1373, with 5505 total XP, 9 reviews received, 2 vouches received, and ACTIVE status.",
+  "executionTime": 1172,
+  "timestamp": "2025-08-03T09:34:03.566Z"
 }
 ```
 

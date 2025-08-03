@@ -209,7 +209,7 @@ Thought:{agent_scratchpad}`);
     agent,
     tools: [ethosTool],
     maxIterations: 3,
-    earlyStoppingMethod: 'generate',
+    earlyStoppingMethod: 'force',
     handleParsingErrors: true,
     verbose: false
   });

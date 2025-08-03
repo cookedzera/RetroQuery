@@ -10,7 +10,7 @@ import { AgentExecutor, createReactAgent } from 'langchain/agents';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { getEthosScore } from '../lib/ethos-langchain.js';
 
-// Create LangChain agent with Groq LLM
+// Simple LangChain chain without agent complexity
 async function createEthosAgent(groqApiKey: string) {
   try {
     // Initialize Groq LLM with supported model
@@ -22,78 +22,63 @@ async function createEthosAgent(groqApiKey: string) {
       streaming: false
     });
 
-    // Create Ethos tool
-    const ethosTool = new DynamicTool({
-      name: 'get_ethos_score',
-      description: `Get onchain reputation score from Ethos Network. Input can be:
-      - Ethereum address (0x...)
-      - ENS name (name.eth)  
-      - Farcaster ID (farcaster:123)
-      - Twitter/X username (cookedzera)
-      Returns reputation score, XP, reviews, vouches, and status.`,
-      
-      func: async (input: string) => {
+    // Return a simple function that handles queries directly
+    return {
+      invoke: async (input: { input: string }) => {
+        const query = input.input.toLowerCase();
+        
+        // Extract usernames/addresses from query
+        const addressMatch = query.match(/(0x[a-fA-F0-9]{40})/);
+        const farcasterMatch = query.match(/farcaster:(\d+)/);
+        const ensMatch = query.match(/(\w+\.eth)/);
+        const usernameMatch = query.match(/(?:for|of|about)\s+(\w+(?:\.\w+)?)/);
+        
+        let userkey = '';
+        if (addressMatch) userkey = addressMatch[1];
+        else if (ensMatch) userkey = ensMatch[1];
+        else if (farcasterMatch) userkey = `farcaster:${farcasterMatch[1]}`;
+        else if (usernameMatch) userkey = usernameMatch[1];
+        else {
+          // Try to extract any word that might be a username
+          const words = query.split(/\s+/);
+          const skipWords = ['what', 'is', 'the', 'score', 'reputation', 'vouch', 'tell', 'can', 'you', 'show', 'me', 'get', 'find', 'check'];
+          for (const word of words) {
+            const cleanWord = word.replace(/[^\w.-]/g, '');
+            if (cleanWord.length > 2 && !skipWords.includes(cleanWord)) {
+              userkey = cleanWord;
+              break;
+            }
+          }
+        }
+        
+        if (!userkey) {
+          return { output: "I couldn't identify a username or address in your query. Please specify who you'd like to look up." };
+        }
+        
         try {
-          const score = await getEthosScore(input.trim());
+          const score = await getEthosScore(userkey);
           
           if (!score) {
-            return `No Ethos Network profile found for "${input}". This user may not have onchain reputation data.`;
+            return { output: `No Ethos Network profile found for "${userkey}". This user may not have onchain reputation data.` };
           }
 
-          return `Ethos Network reputation for ${score.displayName || score.username || input}:
-- Reputation Score: ${score.score}
-- Total XP: ${score.xpTotal}
-- Reviews Received: ${score.reviewCount}
-- Vouches Received: ${score.vouchCount}
-- Status: ${score.status}
-- Userkey: ${score.userkey}
-
-This represents their verified onchain reputation in the Web3 ecosystem.`;
+          // Format response based on query type
+          if (query.includes('vouch') && query.includes('$')) {
+            return { 
+              output: `${score.displayName || userkey} has ${score.vouchCount || 0} vouches on Ethos Network. Vouches don't have a specific dollar value - they represent trust endorsements from other users. Their overall reputation score is ${score.score}.` 
+            };
+          } else {
+            return { 
+              output: `${score.displayName || userkey} has a reputation score of ${score.score}, with ${score.xpTotal || 0} total XP, ${score.reviewCount || 0} reviews received, ${score.vouchCount || 0} vouches received, and ${score.status} status.` 
+            };
+          }
         } catch (error) {
-          return `Error fetching Ethos data: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          return { output: `Error fetching data for ${userkey}: ${error instanceof Error ? error.message : 'Unknown error'}` };
         }
       }
-    });
-
-    // Create prompt template
-    const prompt = PromptTemplate.fromTemplate(`Answer questions using available tools.
-
-You have access to these tools:
-{tools}
-
-Use this format:
-
-Question: {input}
-Thought: I should think about what to do
-Action: {tool_names}
-Action Input: the input to the action
-Observation: the result of the action
-Thought: I now know the final answer
-Final Answer: the final answer
-
-Begin!
-
-Question: {input}
-Thought:{agent_scratchpad}`);
-
-    // Create agent
-    const agent = await createReactAgent({
-      llm,
-      tools: [ethosTool],
-      prompt
-    });
-
-    // Create executor
-    return new AgentExecutor({
-      agent,
-      tools: [ethosTool],
-      maxIterations: 3,
-      earlyStoppingMethod: 'generate',
-      handleParsingErrors: true,
-      verbose: false
-    });
+    };
   } catch (error) {
-    console.error('Error creating LangChain agent:', error);
+    console.error('Error creating Ethos agent:', error);
     throw error;
   }
 }

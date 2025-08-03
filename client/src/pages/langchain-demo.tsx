@@ -236,10 +236,10 @@ export default function LangChainDemo() {
               <div>
                 <h4 className="text-green-400 font-medium mb-2">LangChain Agent</h4>
                 <ul className="space-y-1">
-                  <li>• Zero-shot React agent</li>
-                  <li>• Groq Mixtral-8x7B LLM</li>
-                  <li>• Dynamic tool selection</li>
-                  <li>• Intent recognition</li>
+                  <li>• Optimized query parsing</li>
+                  <li>• Groq Llama 3.3-70B LLM</li>
+                  <li>• Direct tool execution</li>
+                  <li>• Natural language processing</li>
                 </ul>
               </div>
               <div>
