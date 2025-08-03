@@ -17,6 +17,31 @@ export interface EthosScore {
   username?: string;
 }
 
+export interface XPData {
+  totalXP: number;
+  currentSeasonXP?: number;
+  leaderboardRank?: number;
+  weeklyData?: WeeklyXPData[];
+}
+
+export interface WeeklyXPData {
+  week: number;
+  weeklyXp: number;
+  cumulativeXp: number;
+}
+
+export interface Season {
+  id: number;
+  name: string;
+  startDate: string;
+  week?: number;
+}
+
+export interface SeasonsResponse {
+  seasons: Season[];
+  currentSeason: Season;
+}
+
 export class EthosLangChainClient {
   private baseUrl = 'https://api.ethos.network/api/v2';
   private web3bioClient = new Web3BioClient();
@@ -61,7 +86,7 @@ export class EthosLangChainClient {
       const normalizedKey = this.normalizeUserkey(userkey);
       
       // First, try to resolve cross-platform connections with Web3.bio
-      const enhancedResult = await this.getEnhancedProfile(normalizedKey);
+      const enhancedResult = await this.getCrossPlatformProfile(normalizedKey);
       if (enhancedResult) {
         return enhancedResult;
       }
@@ -94,7 +119,7 @@ export class EthosLangChainClient {
    * Enhanced profile lookup using Web3.bio to find connected accounts
    * For example: dwr.eth on Farcaster -> find dwr on Twitter -> get Ethos profile
    */
-  private async getEnhancedProfile(userkey: string): Promise<EthosScore | null> {
+  private async getCrossPlatformProfile(userkey: string): Promise<EthosScore | null> {
     try {
       console.log(`Web3.bio: Enhanced lookup for ${userkey}`);
       
@@ -414,12 +439,121 @@ export class EthosLangChainClient {
     const received = stats.review.received;
     return (received.positive || 0) + (received.neutral || 0) + (received.negative || 0);
   }
+
+  /**
+   * Get detailed XP data for a user
+   */
+  async getXPData(userkey: string): Promise<XPData | null> {
+    try {
+      const normalizedKey = this.normalizeUserkey(userkey);
+      
+      // Get total XP across all seasons
+      const totalXP = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}`);
+      
+      // Get seasons information
+      const seasonsData = await this.request('/xp/seasons');
+      const currentSeason = seasonsData.currentSeason;
+      
+      // Get current season XP
+      let currentSeasonXP = null;
+      if (currentSeason) {
+        try {
+          currentSeasonXP = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/season/${currentSeason.id}`);
+        } catch (error) {
+          console.log(`Current season XP not found for ${normalizedKey}`);
+        }
+      }
+      
+      // Get leaderboard rank
+      let leaderboardRank = null;
+      try {
+        leaderboardRank = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/leaderboard-rank`);
+      } catch (error) {
+        console.log(`Leaderboard rank not found for ${normalizedKey}`);
+      }
+      
+      // Get weekly data for current season
+      let weeklyData = null;
+      if (currentSeason) {
+        try {
+          weeklyData = await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/season/${currentSeason.id}/weekly`);
+        } catch (error) {
+          console.log(`Weekly XP data not found for ${normalizedKey}`);
+        }
+      }
+
+      return {
+        totalXP: totalXP || 0,
+        currentSeasonXP: currentSeasonXP || 0,
+        leaderboardRank,
+        weeklyData
+      };
+    } catch (error) {
+      console.error('Error fetching XP data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get XP seasons information
+   */
+  async getSeasons(): Promise<SeasonsResponse | null> {
+    try {
+      return await this.request('/xp/seasons');
+    } catch (error) {
+      console.error('Error fetching seasons:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get weekly XP data for a user in a specific season
+   */
+  async getWeeklyXP(userkey: string, seasonId: number): Promise<WeeklyXPData[] | null> {
+    try {
+      const normalizedKey = this.normalizeUserkey(userkey);
+      return await this.request(`/xp/user/${encodeURIComponent(normalizedKey)}/season/${seasonId}/weekly`);
+    } catch (error) {
+      console.error('Error fetching weekly XP:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get enhanced profile with XP data
+   */
+  async getEnhancedProfileWithXP(userkey: string): Promise<(EthosScore & { xpData?: XPData }) | null> {
+    try {
+      // Get basic profile
+      const profile = await this.getEthosScore(userkey);
+      if (!profile) return null;
+
+      // Get detailed XP data
+      const xpData = await this.getXPData(userkey);
+      
+      return {
+        ...profile,
+        xpData: xpData || undefined
+      };
+    } catch (error) {
+      console.error('Error fetching enhanced profile:', error);
+      return null;
+    }
+  }
 }
 
 // Export singleton instance
 export const ethosClient = new EthosLangChainClient();
 
-// Helper function for easy import
+// Helper functions for easy import
 export async function getEthosScore(userkey: string): Promise<EthosScore | null> {
   return ethosClient.getEthosScore(userkey);
+}
+
+export async function getXPData(userkey: string): Promise<XPData | null> {
+  return ethosClient.getXPData(userkey);
+}
+
+export async function getEnhancedProfile(userkey: string): Promise<(EthosScore & { xpData?: XPData }) | null> {
+  return ethosClient.getEnhancedProfileWithXP(userkey);
 }
