@@ -102,6 +102,13 @@ Preferred communication style: Simple, everyday language.
 - **✅ ETHOS WHITEPAPER INTEGRATION**: Integrated complete Ethos Network whitepaper knowledge for enhanced conceptual understanding
 - **✅ HYBRID QUERY PROCESSING**: Agent now handles both profile lookups AND conceptual questions about Ethos mechanisms
 - **✅ REPLIT MIGRATION COMPLETED** (August 3, 2025): Successfully migrated from Replit Agent to standard Replit environment with full functionality
+- **✅ ENHANCED XP API INTEGRATION** (August 3, 2025): Fixed weekly XP queries to use proper Ethos Network API v2 endpoints
+  - **Real-time XP Data**: System now fetches total XP, current season XP, and weekly XP breakdowns using official `/xp/user/{userkey}` endpoints
+  - **Weekly Performance Tracking**: Enhanced LangChain agent provides detailed weekly XP progression with cumulative data
+  - **Leaderboard Integration**: Added global leaderboard rank fetching via `/xp/user/{userkey}/leaderboard-rank`
+  - **Season Management**: Integrated `/xp/seasons` endpoint for current season information and historical data
+  - **Discord/Telegram Support**: Enhanced user lookup to support Discord IDs (discord:123456789) and Telegram IDs (telegram:123456789)
+  - **Comprehensive XP Tool**: LangChain agent now uses enhanced `get_ethos_data` tool that provides full XP breakdown including weekly trends
 - **✅ COMPREHENSIVE XP INTEGRATION** (August 3, 2025): Enhanced LangChain AI with complete Ethos Network XP tracking
   - **Detailed XP Metrics**: System now retrieves total XP, seasonal XP, weekly performance data, and leaderboard rankings
   - **Real XP Data Working**: Successfully returning comprehensive XP data (e.g., serpinxbt: 10,998,208 total XP)

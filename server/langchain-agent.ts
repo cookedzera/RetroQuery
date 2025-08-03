@@ -18,48 +18,89 @@ function createGroqLLM(apiKey: string) {
   });
 }
 
-// Create Ethos Network tool
+// Create Enhanced Ethos Network tool with XP support
 function createEthosTool() {
   return new DynamicTool({
-    name: 'get_ethos_score',
-    description: `Get onchain reputation score from Ethos Network for a given user.
+    name: 'get_ethos_data',
+    description: `Get comprehensive Ethos Network data including reputation scores, XP metrics, and activity data.
     Input should be one of:
     - Ethereum address (0x...)
     - ENS name (name.eth)
     - Farcaster ID (farcaster:123)
     - Twitter/X username (just the username without @)
+    - Discord ID (discord:123456789)
+    - Telegram ID (telegram:123456789)
     - Explicit formats: address:0x..., service:x.com:username:name, etc.
     
-    Returns reputation score, XP, review count, vouch count, and other reputation metrics.`,
+    Returns comprehensive data including XP metrics, weekly performance, reputation scores, and activity history.`,
     
     func: async (input: string): Promise<string> => {
       try {
-        const score = await getEthosScore(input.trim());
+        // Import the enhanced client
+        const { EthosNetworkClient } = await import('../server/ethos-client.js');
+        const client = new EthosNetworkClient();
         
-        if (!score) {
-          return `No Ethos Network profile found for "${input}". This user may not have any onchain reputation data or the identifier format may be incorrect.`;
+        const userkey = input.trim();
+        
+        // Get basic profile information
+        const profileData = await client.getProfileData(userkey);
+        if (!profileData) {
+          return `No Ethos Network profile found for "${userkey}". This user may not have any onchain reputation data or the identifier format may be incorrect.`;
         }
 
-        // Format response for the LLM
-        const response = {
-          user: score.displayName || score.username || input,
-          reputation_score: score.score,
-          xp_total: score.xpTotal || 0,
-          review_count: score.reviewCount || 0,
-          vouch_count: score.vouchCount || 0,
-          status: score.status,
-          userkey: score.userkey
-        };
+        // Get enhanced XP data
+        const totalXP = await client.getUserXP(userkey);
+        const seasonsData = await client.getXPSeasons();
+        const currentSeason = seasonsData.currentSeason;
+        
+        let currentSeasonXP = 0;
+        let weeklyXPData = [];
+        let leaderboardRank = 0;
+        
+        if (currentSeason) {
+          currentSeasonXP = await client.getUserSeasonXP(userkey, currentSeason.id);
+          weeklyXPData = await client.getUserXPBySeasonAndWeek(userkey, currentSeason.id);
+          leaderboardRank = await client.getUserLeaderboardRank(userkey);
+        }
 
-        return `Ethos Network reputation data for ${response.user}:
-- Reputation Score: ${response.reputation_score}
-- Total XP: ${response.xp_total}
-- Reviews Received: ${response.review_count}
-- Vouches Received: ${response.vouch_count}
-- Account Status: ${response.status}
-- Userkey: ${response.userkey}
+        // Format comprehensive response
+        let response = `Ethos Network Profile for ${profileData.address}:
 
-This data represents their onchain reputation and credibility in the Web3 ecosystem.`;
+🏆 REPUTATION METRICS:
+- Reputation Score: ${profileData.score}
+- Reviews Received: ${profileData.reviewCount}
+- Vouches Received: ${profileData.vouchCount}
+- Account Status: ACTIVE
+
+⚡ XP PERFORMANCE:
+- Total XP (All Time): ${totalXP.toLocaleString()}`;
+
+        if (currentSeason) {
+          response += `
+- Current Season (${currentSeason.name}): ${currentSeasonXP.toLocaleString()} XP
+- Global Leaderboard Rank: #${leaderboardRank.toLocaleString()}`;
+        }
+
+        // Add weekly XP breakdown if available
+        if (weeklyXPData && weeklyXPData.length > 0) {
+          response += `
+          
+📊 WEEKLY XP BREAKDOWN (Last ${Math.min(weeklyXPData.length, 4)} weeks):`;
+          
+          // Show last 4 weeks in reverse order (most recent first)
+          const recentWeeks = weeklyXPData.slice(-4).reverse();
+          recentWeeks.forEach((week, index) => {
+            const weekLabel = index === 0 ? 'This Week' : `${index + 1} weeks ago`;
+            response += `
+- ${weekLabel} (Week ${week.week}): ${week.weeklyXp} XP (Total: ${week.cumulativeXp})`;
+          });
+        }
+
+        response += `
+
+This data represents real-time onchain reputation and activity metrics from the Ethos Network.`;
+
+        return response;
       } catch (error) {
         return `Error fetching Ethos data for "${input}": ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
@@ -89,7 +130,14 @@ Key Facts about Ethos Network:
 - Slashing: Negative actions that reduce reputation
 - Social Proof of Stake: Economic incentives for honest behavior
 
-When users ask about specific people (like "cookedzera"), always use the get_ethos_score tool to fetch their real data. Never say you don't have access to data - you do have access through the API tool.
+When users ask about specific people or XP metrics (like "cookedzera's weekly XP"), always use the get_ethos_data tool to fetch comprehensive real-time data including XP breakdowns, weekly performance, and reputation metrics. Never say you don't have access to data - you have full access through the enhanced API tool.
+
+For XP-related queries, provide detailed breakdowns including:
+- Total XP across all seasons
+- Current season XP performance  
+- Weekly XP trends and progression
+- Leaderboard rankings
+- Historical performance data
 
 For general questions about Ethos mechanisms, explain the concepts clearly while offering to look up specific user data if helpful.
 
