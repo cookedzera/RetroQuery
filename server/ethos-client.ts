@@ -53,6 +53,18 @@ export interface EthosProfile {
   };
 }
 
+export interface DetailedScore {
+  score: number;
+  level: 'untrusted' | 'emerging' | 'trusted' | 'highly_trusted' | 'legendary' | 'neutral';
+}
+
+export interface ScoreStatus {
+  status: 'idle' | 'queued' | 'calculating' | 'completed' | 'error';
+  isQueued: boolean;
+  isCalculating: boolean;
+  isPending: boolean;
+}
+
 export interface EthosActivity {
   id: string;
   type: 'review' | 'vouch' | 'slash';
@@ -98,6 +110,37 @@ export class EthosNetworkClient {
     }
 
     return response.json();
+  }
+
+  // Detailed Score API methods
+  async getDetailedScoreByAddress(address: string): Promise<DetailedScore> {
+    return this.request(`/score/address?address=${encodeURIComponent(address)}`);
+  }
+
+  async getDetailedScoreByUserId(userId: number): Promise<DetailedScore> {
+    return this.request(`/score/userId?userId=${userId}`);
+  }
+
+  async getDetailedScoreByUserkey(userkey: string): Promise<DetailedScore> {
+    return this.request(`/score/userkey?userkey=${encodeURIComponent(userkey)}`);
+  }
+
+  async getScoresByAddresses(addresses: string[]): Promise<Record<string, DetailedScore>> {
+    return this.request('/score/addresses', {
+      method: 'POST',
+      body: JSON.stringify({ addresses }),
+    });
+  }
+
+  async getScoresByUserkeys(userkeys: string[]): Promise<Record<string, DetailedScore>> {
+    return this.request('/score/userkeys', {
+      method: 'POST',
+      body: JSON.stringify({ userkeys }),
+    });
+  }
+
+  async getScoreStatus(userkey: string): Promise<ScoreStatus> {
+    return this.request(`/score/status?userkey=${encodeURIComponent(userkey)}`);
   }
 
   // Enhanced user lookup methods for all identity types
@@ -916,6 +959,95 @@ export class EthosNetworkClient {
     });
     
     return grouped;
+  }
+
+  // Get detailed score with trust level information
+  async getDetailedScore(userkey: string): Promise<{ detailedScore: DetailedScore; status: ScoreStatus } | null> {
+    try {
+      // Try different methods to get detailed score
+      let detailedScore: DetailedScore | null = null;
+      let status: ScoreStatus | null = null;
+
+      // First try by userkey directly with proper formatting
+      try {
+        const formattedUserkey = this.formatUserkey(userkey);
+        detailedScore = await this.getDetailedScoreByUserkey(formattedUserkey);
+        status = await this.getScoreStatus(formattedUserkey);
+      } catch (error) {
+        console.log(`Direct userkey score lookup failed for ${userkey}, trying user lookup...`);
+      }
+
+      // If direct lookup fails, find user first then get score
+      if (!detailedScore) {
+        const user = await this.findUser(userkey);
+        if (user) {
+          try {
+            if (user.primaryAddress) {
+              detailedScore = await this.getDetailedScoreByAddress(user.primaryAddress);
+            } else if (user.userId) {
+              detailedScore = await this.getDetailedScoreByUserId(user.userId);
+            } else if (user.userkeys && user.userkeys.length > 0) {
+              // Try the first userkey
+              detailedScore = await this.getDetailedScoreByUserkey(user.userkeys[0]);
+            }
+            
+            if (detailedScore) {
+              // Try different userkey formats for status
+              try {
+                status = await this.getScoreStatus(user.userkeys?.[0] || userkey);
+              } catch {
+                status = await this.getScoreStatus(userkey);
+              }
+            }
+          } catch (error) {
+            console.log(`Alternative score lookup failed:`, error);
+          }
+        }
+      }
+
+      if (!detailedScore) {
+        return null;
+      }
+
+      return { 
+        detailedScore, 
+        status: status || { 
+          status: 'idle', 
+          isQueued: false, 
+          isCalculating: false, 
+          isPending: false 
+        } 
+      };
+    } catch (error) {
+      console.error('Failed to get detailed score:', error);
+      return null;
+    }
+  }
+
+  // Helper function to format trust level for display
+  formatTrustLevel(level: string): string {
+    const levelMap: Record<string, string> = {
+      'untrusted': 'Untrusted',
+      'emerging': 'Emerging',
+      'trusted': 'Trusted', 
+      'highly_trusted': 'Highly Trusted',
+      'legendary': 'Legendary',
+      'neutral': 'Neutral'
+    };
+    return levelMap[level] || level;
+  }
+
+  // Helper function to get trust level description
+  getTrustLevelDescription(level: string): string {
+    const descriptions: Record<string, string> = {
+      'untrusted': 'New account with limited reputation history',
+      'emerging': 'Building reputation through community interactions',
+      'trusted': 'Established reputation with verified credibility',
+      'highly_trusted': 'Strong reputation backed by community vouches',
+      'legendary': 'Exceptional reputation leader in the ecosystem',
+      'neutral': 'Account with moderate reputation score, neither flagged nor highly trusted'
+    };
+    return descriptions[level] || 'Unknown trust level';
   }
 }
 

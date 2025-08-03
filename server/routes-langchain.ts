@@ -266,6 +266,68 @@ This data represents real-time XP performance from the Ethos Network API v2.`;
             return {
               output: `${displayName}${platformInfo} has received ${profileData.reviewCount || 0} reviews on Ethos Network. Reviews provide peer feedback and help build reputation outside of financially-backed stakes. Their credibility score is ${profileData.score}.`
             };
+          } else if ((query.includes('score') && (query.includes('detailed') || query.includes('detail') || query.includes('trust') || query.includes('level'))) || 
+                     (query.includes('trust') && query.includes('level')) ||
+                     query.includes('detailed score') ||
+                     query.includes('score details')) {
+            // Handle detailed score queries
+            console.log(`DEBUG: Attempting detailed score lookup for ${identifier}`);
+            try {
+              const detailedScoreData = await client.getDetailedScore(identifier);
+              console.log(`DEBUG: Detailed score data result:`, detailedScoreData);
+              
+              if (detailedScoreData) {
+                const { detailedScore, status } = detailedScoreData;
+                const trustLevel = client.formatTrustLevel(detailedScore.level);
+                const trustDescription = client.getTrustLevelDescription(detailedScore.level);
+                
+                let response = `${displayName}${platformInfo} Detailed Score Analysis:
+
+🏆 TRUST SCORE BREAKDOWN:
+- Reputation Score: ${detailedScore.score}
+- Trust Level: ${trustLevel}
+- Status: ${trustDescription}
+
+🔄 CALCULATION STATUS:`;
+                
+                if (status.isCalculating) {
+                  response += `
+- Currently calculating new score
+- Update in progress: ${status.status}`;
+                } else if (status.isQueued) {
+                  response += `
+- Score update queued
+- Status: ${status.status}`;
+                } else if (status.isPending) {
+                  response += `
+- Score update pending
+- Status: ${status.status}`;
+                } else {
+                  response += `
+- Score up to date
+- Status: ${status.status}`;
+                }
+                
+                response += `
+
+📊 TRUST LEVEL SYSTEM:
+- Untrusted: New accounts with limited history
+- Emerging: Building reputation through interactions
+- Trusted: Established credibility 
+- Highly Trusted: Strong community backing
+- Legendary: Exceptional ecosystem leaders
+
+This detailed score analysis uses the official Ethos Network API v2 score endpoints.`;
+                
+                return { output: response };
+              } else {
+                console.log(`DEBUG: No detailed score data returned for ${identifier}`);
+                // Fall through to default response
+              }
+            } catch (error) {
+              console.log('Detailed score lookup failed, falling back to basic score:', error);
+              // Fall through to default response
+            }
           } else {
             // Default comprehensive response
             let response = `${displayName}${platformInfo} Ethos Network Profile:
