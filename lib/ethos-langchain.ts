@@ -579,7 +579,7 @@ export async function getEthosScore(userkey: string): Promise<EthosScore | null>
       // Add XP breakdown data
       currentSeasonXP,
       weeklyXPData,
-      currentSeason: currentSeason?.name,
+      currentSeason: currentSeason?.name === 'Season 1' ? 'First Season' : currentSeason?.name,
       leaderboardRank
     };
     

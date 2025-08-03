@@ -226,8 +226,9 @@ async function createEthosAgent(groqApiKey: string) {
 - Total XP (All Time): ${totalXP.toLocaleString()}`;
 
             if (currentSeason) {
+              const seasonName = currentSeason.name === 'Season 1' ? 'First Season' : currentSeason.name;
               response += `
-- Current Season (${currentSeason.name}): ${currentSeasonXP.toLocaleString()} XP
+- Current Season (${seasonName}): ${currentSeasonXP.toLocaleString()} XP
 - Global Leaderboard Rank: #${leaderboardRank.toLocaleString()}`;
             }
 
@@ -279,8 +280,9 @@ This data represents real-time XP performance from the Ethos Network API v2.`;
 - Total XP (All Time): ${totalXP.toLocaleString()}`;
 
             if (currentSeason) {
+              const seasonName = currentSeason.name === 'Season 1' ? 'First Season' : currentSeason.name;
               response += `
-- Current Season (${currentSeason.name}): ${currentSeasonXP.toLocaleString()} XP
+- Current Season (${seasonName}): ${currentSeasonXP.toLocaleString()} XP
 - Global Leaderboard Rank: #${leaderboardRank.toLocaleString()}`;
             }
 
@@ -303,8 +305,9 @@ This data represents their real-time onchain reputation and activity metrics fro
 - Total XP (All Time): ${(score.xpTotal || 0).toLocaleString()}`;
 
                 if (score.currentSeason) {
+                  const seasonName = score.currentSeason === 'Season 1' ? 'First Season' : score.currentSeason;
                   response += `
-- Current Season (${score.currentSeason}): ${(score.currentSeasonXP || 0).toLocaleString()} XP`;
+- Current Season (${seasonName}): ${(score.currentSeasonXP || 0).toLocaleString()} XP`;
                   if (score.leaderboardRank) {
                     response += `
 - Global Leaderboard Rank: #${score.leaderboardRank.toLocaleString()}`;
@@ -340,8 +343,9 @@ This data represents real-time XP performance from the Ethos Network API v2.`;
 - Total XP (All Time): ${(score.xpTotal || 0).toLocaleString()}`;
 
                 if (score.currentSeason && score.currentSeasonXP) {
+                  const seasonName = score.currentSeason === 'Season 1' ? 'First Season' : score.currentSeason;
                   response += `
-- Current Season (${score.currentSeason}): ${score.currentSeasonXP.toLocaleString()} XP`;
+- Current Season (${seasonName}): ${score.currentSeasonXP.toLocaleString()} XP`;
                   if (score.leaderboardRank) {
                     response += `
 - Global Leaderboard Rank: #${score.leaderboardRank.toLocaleString()}`;
