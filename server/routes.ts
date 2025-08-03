@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ethosClient } from "./ethos-client";
 import { ethosMockClient } from "./ethos-mock-client";
 import { DynamicAPIExecutor } from "./dynamic-api-executor";
+import { handleLangChainQuery, handleAgentHealth } from "./routes-langchain.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -598,6 +599,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to search user" });
     }
   });
+
+  // LangChain AI Agent routes
+  app.post("/api/langchain/query", handleLangChainQuery);
+  app.get("/api/langchain/health", handleAgentHealth);
 
   const httpServer = createServer(app);
   return httpServer;
