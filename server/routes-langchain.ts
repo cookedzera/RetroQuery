@@ -51,9 +51,10 @@ async function createEthosAgent(groqApiKey: string) {
       invoke: async (input: { input: string }) => {
         const query = input.input.toLowerCase();
         
-        // Check if this is a conceptual question about Ethos Network
-        const conceptualTerms = ['how does', 'what is', 'explain', 'mechanism work', 'social proof', 'credibility scor', 'ethos network', 'vouch work', 'slash work', 'review work', 'invite system', 'attest work'];
-        const isConceptualQuery = conceptualTerms.some(term => query.includes(term));
+        // Prioritize user data queries over conceptual explanations
+        const hasUserIdentifier = /\b(?:cookedzera|vitalik|score|reputation|profile|reviews|vouches|xp)\b/i.test(query);
+        const conceptualTerms = ['how does', 'what is', 'explain', 'mechanism work', 'social proof', 'invite system', 'attest work'];
+        const isConceptualQuery = conceptualTerms.some(term => query.includes(term)) && !hasUserIdentifier;
         
         if (isConceptualQuery) {
           // Use LLM with Ethos knowledge for conceptual questions
@@ -157,8 +158,8 @@ async function createEthosAgent(groqApiKey: string) {
           const displayName = score.displayName || score.username || identifier;
           
           if (query.includes('vouch')) {
-            const vouchExplanation = score.vouchCount > 0 
-              ? `This represents ${score.vouchCount} people who have staked their Ethereum to vouch for ${displayName}'s credibility - the highest trust signal in Ethos Network.`
+            const vouchExplanation = (score.vouchCount || 0) > 0 
+              ? `This represents ${score.vouchCount || 0} people who have staked their Ethereum to vouch for ${displayName}'s credibility - the highest trust signal in Ethos Network.`
               : `No vouches yet. Vouches are when someone stakes their Ethereum to vouch for another person's credibility - the strongest trust signal in Ethos.`;
             
             return { 

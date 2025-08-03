@@ -5,19 +5,16 @@
 
 import { ChatGroq } from '@langchain/groq';
 import { DynamicTool } from '@langchain/core/tools';
-import { AgentExecutor, createReactAgent } from 'langchain/agents';
-import { pull } from 'langchain/hub';
-import { PromptTemplate } from '@langchain/core/prompts';
 import { getEthosScore, type EthosScore } from '../lib/ethos-langchain.js';
 
 // Initialize Groq LLM with supported model
 function createGroqLLM(apiKey: string) {
   return new ChatGroq({
-    model: 'llama-3.1-70b-versatile',
+    model: 'llama-3.3-70b-versatile',
     apiKey: apiKey,
-    temperature: 0.1, // Low temperature for consistent responses
-    maxTokens: 1000,  // Limit tokens for faster responses
-    streaming: false   // Disable streaming for Vercel compatibility
+    temperature: 0.1,
+    maxTokens: 1000,
+    streaming: false
   });
 }
 
@@ -70,60 +67,85 @@ This data represents their onchain reputation and credibility in the Web3 ecosys
   });
 }
 
-// Create LangChain agent
+// Create simplified agent without complex prompt chains
 export async function createEthosAgent(groqApiKey: string) {
   try {
-    // Initialize LLM
     const llm = createGroqLLM(groqApiKey);
+    const ethosTool = createEthosTool();
     
-    // Create tools
-    const tools = [createEthosTool()];
-    
-    // Get prompt template (using a simplified version for speed)
-    let prompt;
-    try {
-      prompt = await pull('hwchase17/react');
-    } catch (error) {
-      // Use a basic prompt template if hub is unavailable
-      prompt = PromptTemplate.fromTemplate(`Answer the following questions as best you can. You have access to the following tools:
+    return {
+      async processQuery(query: string): Promise<string> {
+        try {
+          // Enhanced system prompt with Ethos Network knowledge
+          const systemPrompt = `You are an expert on the Ethos Network, a Web3 reputation system. You have access to real-time Ethos Network data through an API tool.
 
-{tools}
+Key Facts about Ethos Network:
+- Decentralized reputation system built on blockchain technology
+- Users earn reputation through peer reviews, vouches, and on-chain activities
+- Reputation Score (Credibility Score): Single numerical score from social interactions
+- XP (Experience Points): Points earned from platform engagement
+- Reviews: Peer-to-peer reputation assessments with scores and comments
+- Vouches: ETH-backed endorsements showing financial confidence
+- Slashing: Negative actions that reduce reputation
+- Social Proof of Stake: Economic incentives for honest behavior
 
-Use the following format:
+When users ask about specific people (like "cookedzera"), always use the get_ethos_score tool to fetch their real data. Never say you don't have access to data - you do have access through the API tool.
 
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
+For general questions about Ethos mechanisms, explain the concepts clearly while offering to look up specific user data if helpful.
 
-Begin!
+Always provide accurate, helpful responses about Web3 reputation and Ethos Network features.`;
 
-Question: {input}
-Thought:{agent_scratchpad}`);
-    }
-    
-    // Create agent
-    const agent = await createReactAgent({
-      llm,
-      tools,
-      prompt
-    });
-    
-    // Create executor with optimizations for speed
-    const executor = new AgentExecutor({
-      agent,
-      tools,
-      maxIterations: 3, // Limit iterations for faster responses
-      earlyStoppingMethod: 'generate', // Stop early when possible
-      handleParsingErrors: true,
-      verbose: false // Disable verbose logging for speed
-    });
-    
-    return executor;
+          // Check if this is a user query or conceptual question
+          const isUserQuery = /(?:score|reputation|profile|xp|reviews|vouches|activities|stats)/i.test(query) && 
+                             /(?:@\w+|\b\w+\b(?:\s+\w+)*\b)/.test(query);
+          
+          if (isUserQuery) {
+            // Extract potential usernames/addresses from the query
+            const matches = query.match(/(?:@(\w+)|(\b\w+\b)(?:\s+on\s+ethos)?)/gi);
+            if (matches && matches.length > 0) {
+              let username = matches[0].replace('@', '').trim();
+              
+              // If multiple words, take the first one that looks like a username
+              if (username.includes(' ')) {
+                const words = username.split(' ');
+                username = words.find(word => word.length > 2 && /^[a-zA-Z0-9_]+$/.test(word)) || words[0];
+              }
+              
+              try {
+                const result = await ethosTool.func(username);
+                
+                const response = await llm.invoke([
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: `${query}\n\nHere's the real Ethos Network data I found:\n${result}` }
+                ]);
+                
+                return response.content as string;
+              } catch (error) {
+                // If tool fails, still try to answer the question
+                const response = await llm.invoke([
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: `${query}\n\nNote: I encountered an error fetching the specific user data: ${error}` }
+                ]);
+                
+                return response.content as string;
+              }
+            }
+          }
+          
+          // For general questions, use the LLM directly
+          const response = await llm.invoke([
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: query }
+          ]);
+          
+          return response.content as string;
+          
+        } catch (error) {
+          console.error('Agent processing error:', error);
+          throw new Error(`Failed to process query: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+    };
   } catch (error) {
     console.error('Error creating agent:', error);
     throw new Error('Failed to initialize LangChain agent');
@@ -147,17 +169,15 @@ export async function queryEthosAgent(query: string, groqApiKey: string): Promis
       setTimeout(() => reject(new Error('Query timeout')), 15000); // 15s timeout
     });
     
-    const queryPromise = agent.invoke({
-      input: query
-    });
+    const queryPromise = agent.processQuery(query);
     
-    const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+    const result = await Promise.race([queryPromise, timeoutPromise]) as string;
     
     const executionTime = Date.now() - startTime;
     
     return {
       success: true,
-      response: result.output || result.text || 'No response generated',
+      response: result,
       executionTime
     };
   } catch (error) {
