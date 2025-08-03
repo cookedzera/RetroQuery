@@ -3,6 +3,8 @@
  * Handles userkey normalization and score fetching
  */
 
+import { Web3BioClient } from './web3bio-client';
+
 export interface EthosScore {
   userkey: string;
   score: number;
@@ -17,6 +19,7 @@ export interface EthosScore {
 
 export class EthosLangChainClient {
   private baseUrl = 'https://api.ethos.network/api/v2';
+  private web3bioClient = new Web3BioClient();
 
   /**
    * Normalize userkey to proper Ethos format
@@ -57,7 +60,13 @@ export class EthosLangChainClient {
     try {
       const normalizedKey = this.normalizeUserkey(userkey);
       
-      // Try different lookup methods based on the userkey format
+      // First, try to resolve cross-platform connections with Web3.bio
+      const enhancedResult = await this.getEnhancedProfile(normalizedKey);
+      if (enhancedResult) {
+        return enhancedResult;
+      }
+
+      // Fallback to direct lookup
       let userData = await this.lookupUser(normalizedKey);
       
       if (!userData) {
@@ -77,6 +86,118 @@ export class EthosLangChainClient {
       };
     } catch (error) {
       console.error('Error fetching Ethos score:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Enhanced profile lookup using Web3.bio to find connected accounts
+   * For example: dwr.eth on Farcaster -> find dwr on Twitter -> get Ethos profile
+   */
+  private async getEnhancedProfile(userkey: string): Promise<EthosScore | null> {
+    try {
+      console.log(`Web3.bio: Enhanced lookup for ${userkey}`);
+      
+      // Get connected profiles from Web3.bio
+      const connections = await this.web3bioClient.getConnectedProfiles(userkey);
+      console.log(`Web3.bio: Found connections for ${userkey}:`, connections);
+
+      // Priority order: Twitter first (most likely to have Ethos profile), then Farcaster
+      const searchOrder = [
+        { platform: 'Twitter/X', key: connections.twitter },
+        { platform: 'Farcaster', key: connections.farcaster },
+        { platform: 'ENS', key: connections.ens },
+        { platform: 'Address', key: connections.address }
+      ];
+
+      let bestProfile = null;
+      let connectionInfo = '';
+
+      for (const { platform, key } of searchOrder) {
+        if (!key) continue;
+
+        console.log(`Web3.bio: Trying ${platform} connection: ${key}`);
+        
+        let userData = null;
+        if (platform === 'Twitter/X') {
+          userData = await this.tryTwitterLookup(key);
+        } else if (platform === 'Farcaster') {
+          userData = await this.tryFarcasterLookup(key);
+        } else if (platform === 'ENS' || platform === 'Address') {
+          userData = await this.tryAddressLookup(key);
+        }
+
+        if (userData) {
+          console.log(`Web3.bio: Found Ethos profile via ${platform}: ${key}`);
+          
+          // Create enhanced profile with connection info
+          bestProfile = {
+            userkey: userData.userkeys?.[0] || key,
+            score: userData.score || 0,
+            rank: userData.rank,
+            xpTotal: userData.xpTotal || 0,
+            reviewCount: this.calculateReviewCount(userData.stats),
+            vouchCount: userData.stats?.vouch?.received?.count || 0,
+            status: userData.status || 'ACTIVE',
+            displayName: userData.displayName,
+            username: userData.username
+          };
+
+          // Add connection context for user
+          if (platform === 'Twitter/X' && userkey !== key) {
+            connectionInfo = ` (connected Twitter: @${key})`;
+          } else if (platform === 'Farcaster' && userkey !== key) {
+            connectionInfo = ` (connected Farcaster: ${key})`;
+          }
+          
+          break; // Use the first successful match
+        }
+      }
+
+      if (bestProfile && connectionInfo) {
+        bestProfile.displayName = (bestProfile.displayName || bestProfile.username || userkey) + connectionInfo;
+      }
+
+      return bestProfile;
+    } catch (error) {
+      console.log(`Web3.bio: Enhanced lookup failed for ${userkey}:`, error);
+      return null;
+    }
+  }
+
+  // Helper methods for specific platform lookups
+  private async tryTwitterLookup(username: string): Promise<any> {
+    try {
+      const result = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [username] })
+      });
+      return result && result.length > 0 ? result[0] : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private async tryFarcasterLookup(username: string): Promise<any> {
+    try {
+      const result = await this.request('/users/by/farcaster/usernames', {
+        method: 'POST',
+        body: JSON.stringify({ farcasterUsernames: [username] })
+      });
+      return result.users && result.users.length > 0 ? result.users[0].user : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private async tryAddressLookup(address: string): Promise<any> {
+    try {
+      const result = await this.request('/users/by/address', {
+        method: 'POST',
+        body: JSON.stringify({ addresses: [address] })
+      });
+      return result && result.length > 0 ? result[0] : null;
+    } catch (error) {
       return null;
     }
   }
