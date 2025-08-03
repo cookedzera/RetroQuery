@@ -90,67 +90,150 @@ export class EthosLangChainClient {
   }
 
   private async lookupUser(userkey: string): Promise<any> {
-    // Try Twitter/X lookup first (most common)
-    try {
-      const xResult = await this.request('/users/by/x', {
-        method: 'POST',
-        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
-      });
-      
-      if (xResult && xResult.length > 0) {
-        return xResult[0];
+    console.log(`Looking up user: ${userkey}`);
+    
+    // Handle ENS domains (.eth) - these are Ethereum addresses
+    if (userkey.endsWith('.eth')) {
+      try {
+        console.log(`Trying ENS lookup for: ${userkey}`);
+        const addressResult = await this.request('/users/by/address', {
+          method: 'POST',
+          body: JSON.stringify({ addresses: [userkey] })
+        });
+        
+        if (addressResult && addressResult.length > 0) {
+          console.log(`Found ENS user: ${userkey}`);
+          return addressResult[0];
+        }
+      } catch (error) {
+        console.log(`ENS lookup failed for ${userkey}:`, error);
       }
-    } catch (error) {
-      // Continue to next method
     }
 
-    // Try Farcaster lookup
-    try {
-      const farcasterResult = await this.request('/users/by/farcaster/usernames', {
-        method: 'POST',
-        body: JSON.stringify({ farcasterUsernames: [userkey] })
-      });
-      
-      if (farcasterResult.users && farcasterResult.users.length > 0) {
-        return farcasterResult.users[0].user;
-      }
-    } catch (error) {
-      // Continue to next method
-    }
-
-    // Try address lookup if it looks like an address
+    // Handle Ethereum addresses (0x...)
     if (userkey.startsWith('0x') || userkey.includes('address:')) {
       try {
         const address = userkey.replace('address:', '');
+        console.log(`Trying address lookup for: ${address}`);
         const addressResult = await this.request('/users/by/address', {
           method: 'POST',
           body: JSON.stringify({ addresses: [address] })
         });
         
         if (addressResult && addressResult.length > 0) {
+          console.log(`Found address user: ${address}`);
           return addressResult[0];
         }
       } catch (error) {
-        // Continue
+        console.log(`Address lookup failed for ${address}:`, error);
       }
     }
 
-    // Try profile ID if numeric
+    // Handle profile IDs (numeric)
     if (/^\d+$/.test(userkey)) {
       try {
+        console.log(`Trying profile ID lookup for: ${userkey}`);
         const profileResult = await this.request('/users/by/profile-id', {
           method: 'POST',
           body: JSON.stringify({ profileIds: [parseInt(userkey)] })
         });
         
         if (profileResult && profileResult.length > 0) {
+          console.log(`Found profile ID user: ${userkey}`);
           return profileResult[0];
         }
       } catch (error) {
-        // Final attempt failed
+        console.log(`Profile ID lookup failed for ${userkey}:`, error);
       }
     }
 
+    // Try Twitter/X lookup (most common for usernames)
+    try {
+      console.log(`Trying Twitter/X lookup for: ${userkey}`);
+      const xResult = await this.request('/users/by/x', {
+        method: 'POST',
+        body: JSON.stringify({ accountIdsOrUsernames: [userkey] })
+      });
+      
+      if (xResult && xResult.length > 0) {
+        console.log(`Found Twitter/X user: ${userkey}`);
+        return xResult[0];
+      }
+    } catch (error) {
+      console.log(`Twitter/X lookup failed for ${userkey}:`, error);
+    }
+
+    // Try Farcaster username lookup
+    try {
+      console.log(`Trying Farcaster username lookup for: ${userkey}`);
+      const farcasterResult = await this.request('/users/by/farcaster/usernames', {
+        method: 'POST',
+        body: JSON.stringify({ farcasterUsernames: [userkey] })
+      });
+      
+      if (farcasterResult.users && farcasterResult.users.length > 0) {
+        console.log(`Found Farcaster user: ${userkey}`);
+        return farcasterResult.users[0].user;
+      }
+    } catch (error) {
+      console.log(`Farcaster username lookup failed for ${userkey}:`, error);
+    }
+
+    // Try Farcaster ID lookup if it looks like an ID
+    if (/^\d+$/.test(userkey)) {
+      try {
+        console.log(`Trying Farcaster ID lookup for: ${userkey}`);
+        const farcasterIdResult = await this.request('/users/by/farcaster', {
+          method: 'POST',
+          body: JSON.stringify({ farcasterIds: [userkey] })
+        });
+        
+        if (farcasterIdResult && farcasterIdResult.length > 0) {
+          console.log(`Found Farcaster ID user: ${userkey}`);
+          return farcasterIdResult[0];
+        }
+      } catch (error) {
+        console.log(`Farcaster ID lookup failed for ${userkey}:`, error);
+      }
+    }
+
+    // Try Discord ID lookup if it looks like a Discord ID
+    if (/^\d{17,19}$/.test(userkey)) {
+      try {
+        console.log(`Trying Discord lookup for: ${userkey}`);
+        const discordResult = await this.request('/users/by/discord', {
+          method: 'POST',
+          body: JSON.stringify({ discordIds: [userkey] })
+        });
+        
+        if (discordResult && discordResult.length > 0) {
+          console.log(`Found Discord user: ${userkey}`);
+          return discordResult[0];
+        }
+      } catch (error) {
+        console.log(`Discord lookup failed for ${userkey}:`, error);
+      }
+    }
+
+    // Try Telegram ID lookup if it looks like a Telegram ID
+    if (/^\d{8,12}$/.test(userkey)) {
+      try {
+        console.log(`Trying Telegram lookup for: ${userkey}`);
+        const telegramResult = await this.request('/users/by/telegram', {
+          method: 'POST',
+          body: JSON.stringify({ telegramIds: [userkey] })
+        });
+        
+        if (telegramResult && telegramResult.length > 0) {
+          console.log(`Found Telegram user: ${userkey}`);
+          return telegramResult[0];
+        }
+      } catch (error) {
+        console.log(`Telegram lookup failed for ${userkey}:`, error);
+      }
+    }
+
+    console.log(`No user found for: ${userkey}`);
     return null;
   }
 
