@@ -79,26 +79,33 @@ async function createEthosAgent(groqApiKey: string) {
         // Enhanced extraction for multiple platform types
         let identifier = '';
         
-        // Extract various identifier patterns
+        // Extract various identifier patterns - prioritize specific formats first
         const patterns = [
           // Ethereum address
           { regex: /(0x[a-fA-F0-9]{40})/, type: 'address' },
-          // ENS name
-          { regex: /(\w+\.eth)/, type: 'ens' },
+          // Farcaster-specific searches - ENS domains in Farcaster context (most specific first)
+          { regex: /show\s+me\s+(\w+\.eth)\s+activity.*farcaster/i, type: 'farcaster_username' },
+          { regex: /(\w+\.eth)\s+reputation.*on\s+farcaster/i, type: 'farcaster_username' },
+          { regex: /(\w+\.eth)\s+on\s+farcaster/i, type: 'farcaster_username' },
+          // Regular usernames in Farcaster context
+          { regex: /(?:show\s+me\s+|check\s+)?(\w+)\s+(?:activity|reputation).*(?:on\s+)?farcaster/i, type: 'farcaster_username' },
+          { regex: /(\w+)\s+on\s+farcaster/i, type: 'farcaster_username' },
+          // Explicit farcaster prefix
+          { regex: /farcaster[:\s]+(\w+(?:\.\w+)?)/i, type: 'farcaster_username' },
+          { regex: /farcaster[:\s]+(\d+)/i, type: 'farcaster_id' },
+          // ENS name (only when not in farcaster context)
+          { regex: /(\w+\.eth)(?!\s+.*farcaster)/i, type: 'ens' },
           // Telegram ID formats
-          { regex: /telegram[:\s]+(\d+)/, type: 'telegram' },
-          { regex: /telegramId[:\s]+(\d+)/, type: 'telegram' },
+          { regex: /telegram[:\s]+(\d+)/i, type: 'telegram' },
+          { regex: /telegramId[:\s]+(\d+)/i, type: 'telegram' },
           // Discord ID formats
-          { regex: /discord[:\s]+(\d+)/, type: 'discord' },
-          { regex: /discordId[:\s]+(\d+)/, type: 'discord' },
-          // Farcaster ID/username formats
-          { regex: /farcaster[:\s]+(\w+)/, type: 'farcaster' },
-          { regex: /farcaster[:\s]+(\d+)/, type: 'farcaster' },
+          { regex: /discord[:\s]+(\d+)/i, type: 'discord' },
+          { regex: /discordId[:\s]+(\d+)/i, type: 'discord' },
           // Profile/User ID formats
-          { regex: /profileId[:\s]+(\d+)/, type: 'profileId' },
-          { regex: /userId[:\s]+(\d+)/, type: 'userId' },
-          // General patterns like "profile for X" or "check X on farcaster"
-          { regex: /(?:for|of|about|check)\s+(\w+(?:\.\w+)?)(?:\s+on\s+\w+)?/, type: 'username' }
+          { regex: /profileId[:\s]+(\d+)/i, type: 'profileId' },
+          { regex: /userId[:\s]+(\d+)/i, type: 'userId' },
+          // General patterns like "profile for X" or "check X"
+          { regex: /(?:for|of|about|check)\s+(\w+(?:\.\w+)?)/i, type: 'username' }
         ];
         
         for (const pattern of patterns) {
@@ -108,8 +115,10 @@ async function createEthosAgent(groqApiKey: string) {
               identifier = `telegram:${match[1]}`;
             } else if (pattern.type === 'discord') {
               identifier = `discord:${match[1]}`;
-            } else if (pattern.type === 'farcaster') {
-              identifier = isNaN(Number(match[1])) ? `farcaster:${match[1]}` : match[1];
+            } else if (pattern.type === 'farcaster_username') {
+              identifier = `farcaster_username:${match[1]}`;
+            } else if (pattern.type === 'farcaster_id') {
+              identifier = `farcaster_id:${match[1]}`;
             } else if (pattern.type === 'profileId') {
               identifier = `profileId:${match[1]}`;
             } else if (pattern.type === 'userId') {

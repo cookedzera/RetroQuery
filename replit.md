@@ -84,6 +84,8 @@ Preferred communication style: Simple, everyday language.
 - **✅ MIGRATION COMPLETED** (August 3, 2025): Successfully migrated project from Replit Agent to standard Replit environment
 - **✅ REAL API INTEGRATION VERIFIED**: Ethos Network API calls working correctly, returning authentic user data (cookedzera: Score 1373, XP 5505, 9 reviews, 2 vouches)
 - **✅ USER QUERY DETECTION FIXED**: Enhanced identifier extraction logic to properly detect user queries like "what is cookedzera's reputation score?" and return real API data instead of conceptual responses
+- **✅ FARCASTER ENS SUPPORT FIXED**: Updated API lookup logic to handle Farcaster usernames using ENS domains (cookedzera.eth) by prioritizing platform-specific context over identifier type detection
+- **✅ COMPREHENSIVE FARCASTER QUERY SUPPORT**: Enhanced pattern matching to handle all Farcaster ENS queries: "search X.eth on farcaster", "what is X.eth reputation on farcaster", "show me X.eth activity on farcaster"
 - **✅ GROQ API INTEGRATION**: Added secure GROQ_API_KEY environment variable for AI-powered natural language processing
 - **✅ LANGCHAIN AGENT INTEGRATION**: Built complete LangChain AI agent with Groq Llama 3.3-70b-versatile model
 - **✅ ETHOS NETWORK TOOL**: Created DynamicTool for real-time Ethos Network API calls via LangChain

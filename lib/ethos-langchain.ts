@@ -27,34 +27,26 @@ export class EthosLangChainClient {
     
     // Handle Ethereum addresses
     if (cleaned.startsWith('0x') && cleaned.length === 42) {
-      return `address:${cleaned}`;
-    }
-    
-    // Handle ENS names
-    if (cleaned.endsWith('.eth')) {
-      return `address:${cleaned}`;
-    }
-    
-    // Handle explicit formats
-    if (cleaned.startsWith('address:') || 
-        cleaned.startsWith('service:') || 
-        cleaned.startsWith('profileId:')) {
       return cleaned;
     }
     
-    // Handle farcaster: prefix
-    if (cleaned.startsWith('farcaster:')) {
-      const id = cleaned.replace('farcaster:', '');
-      return `service:farcaster:${id}`;
+    // Handle platform-specific identifiers
+    if (cleaned.startsWith('farcaster_username:')) {
+      return cleaned.replace('farcaster_username:', '');
     }
     
-    // Handle twitter: or x: prefix
-    if (cleaned.startsWith('twitter:') || cleaned.startsWith('x:')) {
-      const username = cleaned.split(':')[1];
-      return `service:x.com:username:${username}`;
+    if (cleaned.startsWith('farcaster_id:')) {
+      return cleaned.replace('farcaster_id:', '');
     }
     
-    // Default: assume it's a username and try Twitter/X first
+    if (cleaned.startsWith('telegram:') || 
+        cleaned.startsWith('discord:') || 
+        cleaned.startsWith('profileId:') || 
+        cleaned.startsWith('userId:')) {
+      return cleaned;
+    }
+    
+    // Default: return as-is for username lookups
     return cleaned;
   }
 
@@ -92,6 +84,45 @@ export class EthosLangChainClient {
   private async lookupUser(userkey: string): Promise<any> {
     console.log(`Looking up user: ${userkey}`);
     
+    // Handle Farcaster-specific searches first
+    if (userkey.startsWith('farcaster_username:')) {
+      const username = userkey.replace('farcaster_username:', '');
+      try {
+        console.log(`Trying Farcaster username lookup for: ${username}`);
+        const farcasterResult = await this.request('/users/by/farcaster/usernames', {
+          method: 'POST',
+          body: JSON.stringify({ farcasterUsernames: [username] })
+        });
+        
+        if (farcasterResult.users && farcasterResult.users.length > 0) {
+          console.log(`Found Farcaster user: ${username}`);
+          return farcasterResult.users[0].user;
+        }
+      } catch (error) {
+        console.log(`Farcaster username lookup failed for ${username}:`, error);
+      }
+      return null;
+    }
+
+    if (userkey.startsWith('farcaster_id:')) {
+      const farcasterIdValue = userkey.replace('farcaster_id:', '');
+      try {
+        console.log(`Trying Farcaster ID lookup for: ${farcasterIdValue}`);
+        const farcasterIdResult = await this.request('/users/by/farcaster', {
+          method: 'POST',
+          body: JSON.stringify({ farcasterIds: [farcasterIdValue] })
+        });
+        
+        if (farcasterIdResult && farcasterIdResult.length > 0) {
+          console.log(`Found Farcaster ID user: ${farcasterIdValue}`);
+          return farcasterIdResult[0];
+        }
+      } catch (error) {
+        console.log(`Farcaster ID lookup failed for ${farcasterIdValue}:`, error);
+      }
+      return null;
+    }
+
     // Handle ENS domains (.eth) - these are Ethereum addresses
     if (userkey.endsWith('.eth')) {
       try {
@@ -125,7 +156,7 @@ export class EthosLangChainClient {
           return addressResult[0];
         }
       } catch (error) {
-        console.log(`Address lookup failed for ${address}:`, error);
+        console.log(`Address lookup failed for ${userkey.replace('address:', '')}:`, error);
       }
     }
 
