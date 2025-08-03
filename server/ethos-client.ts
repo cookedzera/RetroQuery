@@ -3,6 +3,43 @@
  * Official API integration for Web3 reputation data
  */
 
+export interface EthosUser {
+  id: number;
+  profileId: number;
+  displayName: string;
+  username: string;
+  avatarUrl: string;
+  description: string;
+  score: number;
+  status: string;
+  userkeys: string[];
+  xpTotal: number;
+  xpStreakDays: number;
+  links: {
+    profile: string;
+    scoreBreakdown: string;
+  };
+  stats: {
+    review: {
+      received: {
+        negative: number;
+        neutral: number;
+        positive: number;
+      };
+    };
+    vouch: {
+      given: {
+        amountWeiTotal: number;
+        count: number;
+      };
+      received: {
+        amountWeiTotal: number;
+        count: number;
+      };
+    };
+  };
+}
+
 export interface EthosProfile {
   address: string;
   score: number;
@@ -40,7 +77,7 @@ export class EthosNetworkClient {
   private baseUrl = 'https://api.ethos.network/api/v2';
   private clientHeader: string;
 
-  constructor(clientId: string = 'ethos-farcaster-terminal-v1.0') {
+  constructor(clientId: string = 'ethos-langchain-agent-v2.0') {
     this.clientHeader = clientId;
   }
 
@@ -61,6 +98,150 @@ export class EthosNetworkClient {
     }
 
     return response.json();
+  }
+
+  // Enhanced user lookup methods for all identity types
+  async getUsersByUserIds(userIds: number[]): Promise<EthosUser[]> {
+    return this.request('/users/by/ids', {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
+    });
+  }
+
+  async getUsersByAddresses(addresses: string[]): Promise<EthosUser[]> {
+    return this.request('/users/by/address', {
+      method: 'POST',
+      body: JSON.stringify({ addresses }),
+    });
+  }
+
+  async getUsersByProfileIds(profileIds: number[]): Promise<EthosUser[]> {
+    return this.request('/users/by/profile-id', {
+      method: 'POST',
+      body: JSON.stringify({ profileIds }),
+    });
+  }
+
+  async getUsersByTwitter(accountIdsOrUsernames: string[]): Promise<EthosUser[]> {
+    return this.request('/users/by/x', {
+      method: 'POST',
+      body: JSON.stringify({ accountIdsOrUsernames }),
+    });
+  }
+
+  async getUsersByDiscord(discordIds: string[]): Promise<EthosUser[]> {
+    return this.request('/users/by/discord', {
+      method: 'POST',
+      body: JSON.stringify({ discordIds }),
+    });
+  }
+
+  async getUsersByFarcaster(farcasterIds: string[]): Promise<EthosUser[]> {
+    return this.request('/users/by/farcaster', {
+      method: 'POST',
+      body: JSON.stringify({ farcasterIds }),
+    });
+  }
+
+  async getUsersByFarcasterUsernames(farcasterUsernames: string[]): Promise<{
+    users: Array<{ user: EthosUser; username: string }>;
+    notFoundUsernames: string[];
+    errorUsernames: string[];
+  }> {
+    return this.request('/users/by/farcaster/usernames', {
+      method: 'POST',
+      body: JSON.stringify({ farcasterUsernames }),
+    });
+  }
+
+  async getUsersByTelegram(telegramIds: string[]): Promise<EthosUser[]> {
+    return this.request('/users/by/telegram', {
+      method: 'POST',
+      body: JSON.stringify({ telegramIds }),
+    });
+  }
+
+  // Universal user lookup that tries multiple methods
+  async findUser(identifier: string): Promise<EthosUser | null> {
+    try {
+      // Check for Ethereum address (0x...)
+      if (identifier.match(/^0x[a-fA-F0-9]{40}$/)) {
+        const users = await this.getUsersByAddresses([identifier]);
+        return users[0] || null;
+      }
+
+      // Check for ENS name (.eth)
+      if (identifier.endsWith('.eth')) {
+        const users = await this.getUsersByAddresses([identifier]);
+        return users[0] || null;
+      }
+
+      // Check for numeric Farcaster ID
+      if (identifier.match(/^\d+$/) && parseInt(identifier) > 0) {
+        const users = await this.getUsersByFarcaster([identifier]);
+        return users[0] || null;
+      }
+
+      // Check for profile ID (profileId:123)
+      if (identifier.startsWith('profileId:')) {
+        const profileId = parseInt(identifier.replace('profileId:', ''));
+        if (!isNaN(profileId)) {
+          const users = await this.getUsersByProfileIds([profileId]);
+          return users[0] || null;
+        }
+      }
+
+      // Check for user ID (userId:123)
+      if (identifier.startsWith('userId:')) {
+        const userId = parseInt(identifier.replace('userId:', ''));
+        if (!isNaN(userId)) {
+          const users = await this.getUsersByUserIds([userId]);
+          return users[0] || null;
+        }
+      }
+
+      // Check for Telegram ID (telegram:123 or telegramId:123)
+      if (identifier.startsWith('telegram:') || identifier.startsWith('telegramId:')) {
+        const telegramId = identifier.replace(/^(telegram:|telegramId:)/, '');
+        const users = await this.getUsersByTelegram([telegramId]);
+        return users[0] || null;
+      }
+
+      // Check for Discord ID (discord:123 or discordId:123)
+      if (identifier.startsWith('discord:') || identifier.startsWith('discordId:')) {
+        const discordId = identifier.replace(/^(discord:|discordId:)/, '');
+        const users = await this.getUsersByDiscord([discordId]);
+        return users[0] || null;
+      }
+
+      // Check for explicit Farcaster username (farcaster:username)
+      if (identifier.startsWith('farcaster:')) {
+        const username = identifier.replace('farcaster:', '');
+        const result = await this.getUsersByFarcasterUsernames([username]);
+        return result.users[0]?.user || null;
+      }
+
+      // Try as Twitter/X username
+      try {
+        const users = await this.getUsersByTwitter([identifier]);
+        if (users[0]) return users[0];
+      } catch (error) {
+        // Continue to next attempt
+      }
+
+      // Try as Farcaster username
+      try {
+        const result = await this.getUsersByFarcasterUsernames([identifier]);
+        if (result.users[0]) return result.users[0].user;
+      } catch (error) {
+        // Continue to next attempt
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error finding user:', error);
+      return null;
+    }
   }
 
   async getProfileScore(userkey: string): Promise<{ score: number; rank?: number }> {

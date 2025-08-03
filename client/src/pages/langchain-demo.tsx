@@ -25,11 +25,11 @@ export default function LangChainDemo() {
 
   const exampleQueries = [
     "What is cookedzera's reputation score?",
+    "Show profile for telegram:123456789",
+    "Check cookedzera.eth on farcaster",
     "How does the vouch mechanism work in Ethos?",
     "What is social Proof of Stake?",
-    "Explain Ethos credibility scoring",
-    "How many vouches does serpinxbt have?",
-    "What is farcaster:3621's onchain credibility?"
+    "Discord user discord:987654321 reputation"
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
